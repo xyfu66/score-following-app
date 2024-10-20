@@ -36,3 +36,7 @@ def get_score_features(
     chroma = mid.get_chroma(fs=frame_rate)
     chroma_norm = librosa.util.normalize(chroma)
     return chroma_norm.T  # (time, n_chroma)
+
+
+def frame_to_beat(frame, frame_rate, tempo):
+    return frame / frame_rate * 60 / tempo

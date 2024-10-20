@@ -123,6 +123,7 @@ class AudioStreamThread(threading.Thread, BaseAudioStream):
             (features_array, time.time())
         )  # update time after feature extraction
         self.last_chunk = target_audio[-self.hop_length :]
+        print(f"feature shape: {type(features_array)}")
 
     @property
     def current_time(self):
@@ -177,7 +178,7 @@ class MockAudioStreamThread(AudioStreamThread):
 
     def mock_stream(self):
         duration = int(librosa.get_duration(path=self.file_path))
-        time_interval = self.chunk_size / self.sample_rate  # 0.333 sec
+        time_interval = self.chunk_size / self.sample_rate  # 0.0333 sec
         audio_y, _ = librosa.load(self.file_path, sr=self.sample_rate)
         padded_audio = np.concatenate(  # zero padding at the end
             (
@@ -190,12 +191,12 @@ class MockAudioStreamThread(AudioStreamThread):
         ]
         while trimmed_audio.any():
             target_audio = trimmed_audio[: self.chunk_size]
-            # time.sleep(time_interval)
+            # print(f"time interval: {time_interval}")
             f_time = time.time()
-            # print(f"time interval: {f_time - self.last_time if self.last_time else 0}")
             self.last_time = f_time
             self._process_feature(target_audio, f_time)
             trimmed_audio = trimmed_audio[self.chunk_size :]
+            time.sleep(time_interval)
 
     def run(self):
         self.clear_queue()
