@@ -123,7 +123,6 @@ class AudioStreamThread(threading.Thread, BaseAudioStream):
             (features_array, time.time())
         )  # update time after feature extraction
         self.last_chunk = target_audio[-self.hop_length :]
-        print(f"feature shape: {type(features_array)}")
 
     @property
     def current_time(self):

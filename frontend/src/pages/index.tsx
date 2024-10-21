@@ -3,12 +3,15 @@ import Head from 'next/head';
 import FileUpload from '../components/FileUpload';
 import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+
 const IndexPage: React.FC = () => {
   const osmd = useRef<OpenSheetMusicDisplay | null>(null);
   const cursor = useRef<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFileUploaded, setIsFileUploaded] = useState(false);
-  const [frameIndex, setFrameIndex] = useState<number | null>(null); // frameIndex 상태 추가
+  const [frameIndex, setFrameIndex] = useState<number>(0);
+  const [currentFrame, setCurrentFrame] = useState<number>(0);
   const ws = useRef<WebSocket | null>(null);
   const onsetFrames = useRef<number[]>([]);
   const fileId = useRef<string | null>(null);
@@ -26,13 +29,13 @@ const IndexPage: React.FC = () => {
       formData.append('file', file);
 
       // Fetch onset positions from the backend
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/upload`, {
+      const response = await fetch(`${backendUrl}/upload`, {
         method: 'POST',
         body: formData,
       });
       const data = await response.json();
-      onsetFrames.current = data.onset_frames;  // onset_frames 저장
-      fileId.current = data.file_id;  // 파일 식별자 저장
+      onsetFrames.current = data.onset_frames;
+      fileId.current = data.file_id;
     } else {
       console.error('No file selected');
     }
@@ -41,12 +44,10 @@ const IndexPage: React.FC = () => {
   const playMusic = () => {
     console.log('Playing music');
     if (cursor.current && fileId.current) {
-      cursor.current.reset(); // 커서를 처음 위치로 이동
-      cursor.current.show();
-      setIsPlaying(true);
+      resetStatus();
 
       // WebSocket 연결 시작
-      const wsUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL.replace(/^http/, 'ws')}/ws`;
+      const wsUrl = `${backendUrl.replace(/^http/, 'ws')}/ws`;
       ws.current = new WebSocket(wsUrl);
       ws.current.onopen = () => {
         console.log('WebSocket connection opened');
@@ -55,13 +56,8 @@ const IndexPage: React.FC = () => {
       };
       ws.current.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        console.log('WebSocket message received:', data);
-        if (frameIndex !== null && data.frame_index === frameIndex + 1) {
-          moveToNextOnset();
-        }
-        if (data.frame_index !== undefined) {
-          setFrameIndex(data.frame_index); // frame_index 값을 상태로 저장
-        }
+        console.log('WebSocket message received: ', data);
+        setCurrentFrame(data.frame_index);
       };
       ws.current.onclose = () => {
         console.log('WebSocket connection closed');
@@ -72,20 +68,31 @@ const IndexPage: React.FC = () => {
     } else {
       console.error('Cursor or file ID is not initialized');
     }
+
+    function resetStatus() {
+      cursor.current.reset();
+      cursor.current.show();
+      setIsPlaying(true);
+      setCurrentFrame(0);
+      setFrameIndex(0);
+    }
   };
 
   useEffect(() => {
-    if (frameIndex !== null) {
+    console.log(`Current frame index: ${currentFrame}, Frame index: ${frameIndex}`);
+    if (currentFrame >= frameIndex + 1) {
       moveToNextOnset();
+      setFrameIndex(currentFrame);
+      console.log('Frame index updated to:', frameIndex);
     }
-  }, [frameIndex]); // frameIndex 값이 변경될 때마다 moveToNextOnset 함수 호출
+  }, [currentFrame]);
 
   const moveToNextOnset = () => {
     console.log('Moving to next onset');
     if (cursor.current && osmd.current) {
       cursor.current.next();
       cursor.current.show(); // 커서 위치를 강제로 업데이트
-      console.log('Moved to next onset');
+      // console.log('Moved to next onset');
     } else {
       console.log('Cursor or OSMD is not initialized');
     }
@@ -97,22 +104,10 @@ const IndexPage: React.FC = () => {
       cursor.current.hide();
     }
     setIsPlaying(false);
-
-    // WebSocket 연결 종료
     if (ws.current) {
       ws.current.close();
-
-      // 연결이 닫혔는지 확인하고, 필요 시 강제로 종료
-      const checkConnectionClosed = () => {
-        if (ws.current && ws.current.readyState !== WebSocket.CLOSED) {
-          console.log('Forcing WebSocket connection to close');
-          ws.current.close();
-          ws.current = null;
-        }
-      };
-
-      // 일정 시간 후에도 연결이 닫히지 않으면 강제로 종료
-      setTimeout(checkConnectionClosed, 1000); // 1초 후 강제 종료
+      ws.current = null;
+      console.log('WebSocket connection closed');
     }
   };
 

@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 import shutil
 import uuid
 from http import HTTPStatus
@@ -15,6 +16,7 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from partitura.io.exportmidi import get_ppq
+from starlette.websockets import WebSocketState
 
 from .config import FRAME_RATE
 from .helpers import run_score_following
@@ -101,35 +103,42 @@ async def websocket_endpoint(websocket: WebSocket):
     current_frame = 0
 
     reference_features = get_score_features(DEFAULT_SCORE_FILE)
-    score_obj = partitura.load_score_midi(DEFAULT_SCORE_FILE)
+    alignment_in_progress = True
 
     try:
-        while True:
-            with AudioStream(DEFAULT_PERFORMANCE_FILE) as stream:
-                oltw = OLTW(reference_features, stream.queue)
-                for current_frame in oltw.run():
-                    frame_index = (
-                        np.searchsorted(onset_frames, current_frame, side="right") - 1
-                    )
-                    if frame_index >= 0 and frame_index < len(onset_frames):
-                        closest_frame = onset_frames[frame_index]
-                        print(
-                            f"Current frame {current_frame} is closest to frame {closest_frame} at index {frame_index}"
-                        )
+        while alignment_in_progress:
+            # with AudioStream(file_path=DEFAULT_PERFORMANCE_FILE) as stream:
+            #     oltw = OLTW(reference_features, stream.queue)
+            #     for current_frame in oltw.run():
+            #         frame_index = (
+            #             np.searchsorted(onset_frames, current_frame, side="right") - 1
+            #         )
+            #         if 0 <= frame_index <= len(onset_frames):
+            #             closest_frame = onset_frames[frame_index]
+            #             print(
+            #                 f"Current frame {current_frame} is closest to frame {closest_frame} at index {frame_index}"
+            #             )
 
-                    await websocket.send_json({"frame_index": int(frame_index)})
+            #         if websocket.client_state == WebSocketState.CONNECTED:
+            #             await websocket.send_json({"frame_index": int(frame_index)})
+            #         else:
+            #             print("Client disconnected")
+            #             raise WebSocketDisconnect
+
+            # alignment_in_progress = False
 
             # Simulate score following result
-            # await asyncio.sleep(0.1)
-            # current_frame += FRAME_RATE * 0.1
+            await asyncio.sleep(0.1)
+            current_frame += FRAME_RATE * 0.1
 
-            # frame_index = np.searchsorted(onset_frames, current_frame, side="right") - 1
-            # if frame_index >= 0 and frame_index < len(onset_frames):
-            #     closest_frame = onset_frames[frame_index]
-            #     print(
-            #         f"Current frame {current_frame} is closest to frame {closest_frame} at index {frame_index}"
-            #     )
+            frame_index = np.searchsorted(onset_frames, current_frame, side="right") - 1
+            if frame_index >= 0 and frame_index < len(onset_frames):
+                closest_frame = onset_frames[frame_index]
+                print(
+                    f"Current frame {current_frame} is closest to frame {closest_frame} at index {frame_index}"
+                )
 
-            # await websocket.send_json({"frame_index": int(frame_index)})
+            await websocket.send_json({"frame_index": int(frame_index)})
+
     except WebSocketDisconnect:
         print("Client disconnected")
