@@ -3,11 +3,11 @@ from pathlib import Path
 import librosa
 import numpy as np
 import partitura
-import pretty_midi
 from partitura.io.exportmidi import get_ppq
 from partitura.score import Score
+from midi2audio import FluidSynth
 
-from .config import FRAME_RATE
+from .config import FRAME_RATE, HOP_LENGTH, N_FFT, SAMPLE_RATE, SOUND_FONT_PATH
 
 
 def process_chroma(y, sr, hop_length, n_fft) -> np.ndarray:
@@ -34,16 +34,10 @@ def process_chroma_decay(y, sr, hop_length, n_fft) -> np.ndarray:
     return half_wave_rectification.T  # (time, n_chroma)
 
 
-def get_score_features(
-    score_path: Path, frame_rate: int = FRAME_RATE, feature_type: str = "chroma"
-) -> np.ndarray:
-    mid = pretty_midi.PrettyMIDI(str(score_path))
-    chroma = mid.get_chroma(fs=frame_rate)
-    chroma_norm = librosa.util.normalize(chroma)
-    return chroma_norm.T  # (time, n_chroma)
-
-    fs = FluidSynth(SOUND_FONT_PATH, sample_rate=sr)
-    fs.midi_to_audio(score_midi_path, score_audio_path)
+def get_score_features(score_path: Path, feature_type: str = "chroma") -> np.ndarray:
+    score_audio_path = f"./uploads/{score_path.stem}.wav"
+    y, sr = librosa.load(score_audio_path, sr=SAMPLE_RATE)
+    return librosa.feature.chroma_stft(y=y, sr=sr, hop_length=HOP_LENGTH, n_fft=N_FFT).T
 
 
 def convert_frame_to_beat(score_obj: Score, current_frame: int) -> float:
@@ -58,9 +52,23 @@ def convert_frame_to_beat(score_obj: Score, current_frame: int) -> float:
     return beat_position * ratio
 
 
-def convert_musicxml_to_midi(score_xml: Path, midi_path: Path) -> None:
+def preprocess_score(score_xml: Path) -> None:
+    """
+    Preprocess the score xml file to midi and audio file
+
+    Parameters
+    ----------
+    score_xml : Path
+        Path to the score xml file
+    """
+    score_midi_path = f"./uploads/{score_xml.stem}.mid"
     score_obj = partitura.load_musicxml(score_xml)
-    partitura.save_score_midi(score_obj, midi_path)
+    partitura.save_score_midi(score_obj, score_midi_path)
+
+    score_audio_path = f"./uploads/{score_xml.stem}.wav"
+    fs = FluidSynth(SOUND_FONT_PATH, sample_rate=SAMPLE_RATE)
+    fs.midi_to_audio(score_midi_path, score_audio_path)
+    return score_midi_path, score_audio_path
 
 
 def find_midi_by_file_id(file_id: str, directory: Path = Path("./uploads")) -> Path:

@@ -19,7 +19,7 @@ from .position_manager import position_manager
 from .stream import AudioStream
 from .utils import (
     convert_frame_to_beat,
-    convert_musicxml_to_midi,
+    preprocess_score,
     find_midi_by_file_id,
     get_score_features,
 )
@@ -97,7 +97,7 @@ def upload_file(file: UploadFile = File(...)):
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    convert_musicxml_to_midi(file_path, f"./uploads/{file_path.stem}.mid")
+    preprocess_score(file_path)
     return {"file_id": file_id}
 
 
@@ -109,6 +109,7 @@ async def websocket_endpoint(websocket: WebSocket):
     file_id = data["file_id"]
     print(f"Received data: {data}, file_id: {file_id}")
 
+    # Run score following in a separate thread (as a background task)
     loop = asyncio.get_event_loop()
     loop.run_in_executor(executor, run_score_following, file_id)
 
