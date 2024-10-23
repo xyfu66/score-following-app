@@ -7,20 +7,75 @@ import CustomAudioPlayer from '../components/AudioPlayer';
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 const IndexPage: React.FC = () => {
-  const osmd = useRef<OpenSheetMusicDisplay | null>(null);
-  const cursor = useRef<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFileUploaded, setIsFileUploaded] = useState(false);
   const [anchorPositionIndex, setAnchorPositionIndex] = useState<number>(0);
   const [realTimePosition, setRealTimePosition] = useState<number>(0);
+  const osmd = useRef<OpenSheetMusicDisplay | null>(null);
+  const cursor = useRef<any>(null);
   const ws = useRef<WebSocket | null>(null);
   const onsetBeats = useRef<number[]>([]);
   const fileId = useRef<string | null>(null);
+  const uniqueNotesWRest = useRef<any[]>([]);
+  const timeIndexMap = useRef<{ [key: number]: number }>({}); // timeIndexMap: { time: index }
 
   const logWithTimestamp = (message: string) => {
     const now = new Date();
     const timestamp = now.toISOString();
     console.log(`[${timestamp}] ${message}`);
+  };
+
+  const registerNoteFromOsmd = (osmd: OpenSheetMusicDisplay) => {
+    if (osmd && osmd.cursor) {
+      let iterator = osmd.cursor.Iterator;
+
+      var allNotes = [];
+      var allNotesWRest = [];
+
+      while (!iterator.EndReached) {
+        const voices = iterator.CurrentVoiceEntries;
+        for (var i = 0; i < voices.length; i++) {
+          const v = voices[i];
+          const notes = v.Notes;
+          for (var j = 0; j < notes.length; j++) {
+            const note = notes[j];
+            if (note != null) {
+              allNotesWRest.push({
+                note: note.halfTone + 12,
+                time: iterator.currentTimeStamp.RealValue * 4,
+                length: note.Length.RealValue,
+              });
+            }
+            if (note != null && note.halfTone != 0 && !note.isRest()) {
+              allNotes.push({
+                note: note.halfTone + 12,
+                time: iterator.currentTimeStamp.RealValue * 4,
+                length: note.Length.RealValue,
+              });
+            }
+          }
+        }
+
+        iterator.moveToNext();
+      }
+
+      const uniqueNotesWRestArray: { note: number; time: number; length: number }[] = [];
+      const timeIndexMapObj: { [key: number]: number } = {};
+      allNotesWRest.forEach((note, index) => {
+        if (!timeIndexMapObj.hasOwnProperty(note.time)) {
+          uniqueNotesWRestArray.push(note);
+          timeIndexMapObj[note.time] = uniqueNotesWRestArray.length - 1;
+        }
+      });
+
+      uniqueNotesWRest.current = uniqueNotesWRestArray;
+      timeIndexMap.current = timeIndexMapObj;
+      cursor.current = osmd.cursor;
+
+      logWithTimestamp(`All notes: ${JSON.stringify(allNotes)}`);
+      logWithTimestamp(`Unique notes with rests: ${JSON.stringify(uniqueNotesWRest.current)}`);
+      logWithTimestamp(`Time index map: ${JSON.stringify(timeIndexMap.current)}`);
+    }
   };
 
   const afterFileUpload = async (uploadedOsmd: OpenSheetMusicDisplay, uploadedCursor: any) => {
@@ -109,7 +164,7 @@ const IndexPage: React.FC = () => {
   const findClosestIndex = (array: number[], target: number) => {
     let closestIndex = array.findLastIndex((value) => value <= target);
     if (closestIndex === -1) {
-      closestIndex = 0; // 배열의 첫 번째 인덱스를 반환
+      closestIndex = 0;
     }
     return closestIndex;
   };
@@ -118,8 +173,8 @@ const IndexPage: React.FC = () => {
     logWithTimestamp(`Moving to target beat: ${targetBeat}`);
     if (cursor.current && osmd.current) {
       const currentBeat = getCursorCurrentPosition();
-      const currentIndex = window.timeIndexMap[currentBeat];
-      let targetIndex = window.timeIndexMap[targetBeat];
+      const currentIndex = timeIndexMap.current[currentBeat];
+      let targetIndex = timeIndexMap.current[targetBeat];
 
       if (currentIndex === undefined) {
         logWithTimestamp('Invalid current beat position');
@@ -127,10 +182,9 @@ const IndexPage: React.FC = () => {
       }
 
       if (targetIndex === undefined) {
-        // targetBeat가 timeIndexMap에 없을 경우, 가장 가까운 인덱스를 찾기
-        const onsetBeats = Object.keys(window.timeIndexMap).map(Number).sort((a, b) => a - b);
+        const onsetBeats = Object.keys(timeIndexMap.current).map(Number).sort((a, b) => a - b);
         const closestIndex = findClosestIndex(onsetBeats, targetBeat);
-        targetIndex = window.timeIndexMap[onsetBeats[closestIndex]];
+        targetIndex = timeIndexMap.current[onsetBeats[closestIndex]];
         logWithTimestamp(`Closest target index found: ${targetIndex}`);
       }
 
@@ -147,8 +201,8 @@ const IndexPage: React.FC = () => {
         }
       }
 
-      cursor.current.show(); // 커서 위치를 강제로 업데이트
-      logWithTimestamp(`Updated cursor beat position: ${cursor.current.Iterator.currentTimeStamp.RealValue * 4}`);
+      cursor.current.show();
+      logWithTimestamp(`Updated cursor beat position: ${getCursorCurrentPosition()}`);
     } else {
       logWithTimestamp('Cursor or OSMD is not initialized');
     }
@@ -169,77 +223,17 @@ const IndexPage: React.FC = () => {
 
   const getCursorCurrentPosition = () => {
     if (cursor.current && cursor.current.Iterator) {
-      let cursorCurrentPosition = cursor.current.Iterator.currentTimeStamp.RealValue * 4;
-      console.log('Current cursor (beat) position:', cursorCurrentPosition);
-      return cursorCurrentPosition;
+      return cursor.current.Iterator.currentTimeStamp.RealValue * 4;
     }
     return 0;
   };
-
-  const registerNoteFromOsmd = (osmd: OpenSheetMusicDisplay) => {
-  if (osmd && osmd.cursor) {
-    let iterator = osmd.cursor.Iterator;
-
-    var allNotes = [];
-    var allNotesWRest = [];
-
-    while (!iterator.EndReached) {
-      const voices = iterator.CurrentVoiceEntries;
-      for (var i = 0; i < voices.length; i++) {
-        const v = voices[i];
-        const notes = v.Notes;
-        for (var j = 0; j < notes.length; j++) {
-          const note = notes[j];
-          // make sure our note is not silent
-          if (note != null) {
-            allNotesWRest.push({
-              note: note.halfTone + 12, // see issue #224
-              time: iterator.currentTimeStamp.RealValue * 4,
-              length: note.length.realValue,
-              noteObject: note,
-            });
-          }
-          if (note != null && note.halfTone != 0 && !note.isRest()) {
-            allNotes.push({
-              note: note.halfTone + 12, // see issue #224
-              time: iterator.currentTimeStamp.RealValue * 4,
-              length: note.length.realValue,
-              noteObject: note,
-            });
-          }
-        }
-      }
-
-      iterator.moveToNext();
-    }
-
-    // 유일한 time 값을 가진 항목만 남기기
-    const uniqueNotesWRest = [];
-    const timeIndexMap = {};
-    allNotesWRest.forEach((note, index) => {
-      if (!timeIndexMap.hasOwnProperty(note.time)) {
-        uniqueNotesWRest.push(note);
-        timeIndexMap[note.time] = uniqueNotesWRest.length - 1;
-      }
-    });
-
-    window.allNotes = allNotes;
-    window.uniqueNotesWRest = uniqueNotesWRest;
-    window.timeIndexMap = timeIndexMap;
-    window.cursor = osmd.cursor;
-
-    console.log('All notes:', window.allNotes);
-    console.log('Unique notes with rests:', window.uniqueNotesWRest);
-    console.log('Time index map:', window.timeIndexMap);
-  }
-};
 
   return (
     <div>
       <Head>
         <title>Score Following App</title>
       </Head>
-      <CustomAudioPlayer audioPath="audio.wav" startScrolling={playMusic}/>
+      {/* <CustomAudioPlayer audioPath="audio.wav" startScrolling={playMusic}/> */}
       {isFileUploaded && (
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
           <button onClick={playMusic} disabled={isPlaying} style={{ padding: '10px 20px', fontSize: '16px' }}>Play</button>

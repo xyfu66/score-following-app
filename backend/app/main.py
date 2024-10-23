@@ -5,7 +5,6 @@ import time
 import uuid
 from datetime import datetime
 from http import HTTPStatus
-from pathlib import Path
 
 import mido
 import numpy as np
@@ -16,7 +15,6 @@ from fastapi import (
     File,
     UploadFile,
     WebSocket,
-    WebSocketDisconnect,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from partitura.io.exportmidi import get_ppq
@@ -55,9 +53,7 @@ def convert_frame_to_beat(score_obj, current_frame):
         score_obj.parts[0].beat_map(timeline_time),
         decimals=2,
     )
-    nominator, denominator, beat_type = score_obj.parts[0].time_signature_map(
-        timeline_time
-    )
+    nominator, denominator, _ = score_obj.parts[0].time_signature_map(timeline_time)
     ratio = 4 / denominator  # 1/4 note as a unit
     return beat_position * ratio
 
@@ -70,9 +66,6 @@ def run_score_following(score_file, performance_file):
     alignment_in_progress = True
 
     score_obj = partitura.load_score_midi(score_file)
-    tick = mido.MidiFile(score_file).ticks_per_beat
-    start_time = time.time()
-    elapsed_sec = 0
     try:
         while alignment_in_progress:
             with AudioStream() as stream:
@@ -85,6 +78,9 @@ def run_score_following(score_file, performance_file):
         logging.error(f"Error: {e}")
         return {"error": str(e)}
 
+    # Simulation version
+    # start_time = time.time()
+    # elapsed_sec = 0
     # while alignment_in_progress:
     #     interval = 0.1
     #     time.sleep(interval)
@@ -112,7 +108,6 @@ async def alignment(
     background_tasks: BackgroundTasks,
 ):
 
-    # frame_index = np.searchsorted(onset_frames, current_frame, side="right") - 1
     background_tasks.add_task(
         run_score_following,
         score_file=DEFAULT_SCORE_FILE,
@@ -130,9 +125,6 @@ def upload_file(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, buffer)
 
     try:
-        # onset_beats = np.unique(
-        #     partitura.musicxml_to_notearray(file_path)["onset_beat"]
-        # ).tolist()
         score_obj = partitura.load_score_midi(DEFAULT_SCORE_FILE)
         onset_beats = np.unique(score_obj.note_array()["onset_beat"])
         tick = mido.MidiFile(DEFAULT_SCORE_FILE).ticks_per_beat
@@ -170,17 +162,12 @@ async def websocket_endpoint(websocket: WebSocket):
 
     data = await websocket.receive_json()  # data: {"onset_beats": [0.5, 1, 1.5, ...]}
     print(f"Received data: {data}, {type(data)}")
-    onset_beats = data["onset_beats"]
 
     try:
         while websocket.client_state == WebSocketState.CONNECTED:
             print(
                 f"[{datetime.now().strftime('%H:%M:%S.%f')}] Current position: {current_position}"
             )
-            beat_index = (
-                np.searchsorted(onset_beats, current_position, side="right") - 1
-            )
-            # print(f"beat_index: {beat_index}")
 
             await websocket.send_json({"beat_position": current_position})
             await asyncio.sleep(0.1)
