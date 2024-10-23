@@ -6,6 +6,7 @@ import partitura
 from partitura.io.exportmidi import get_ppq
 from partitura.score import Score
 from midi2audio import FluidSynth
+import pyaudio
 
 from .config import FRAME_RATE, HOP_LENGTH, N_FFT, SAMPLE_RATE, SOUND_FONT_PATH
 
@@ -76,3 +77,22 @@ def find_midi_by_file_id(file_id: str, directory: Path = Path("./uploads")) -> P
         if file.is_file() and file.stem.startswith(file_id) and file.suffix == ".mid":
             return file
     return None
+
+
+def get_audio_devices():
+    p = pyaudio.PyAudio()
+    device_count = p.get_device_count()
+    devices = []
+    for i in range(device_count):
+        device_info = p.get_device_info_by_index(i)
+        devices.append(
+            {
+                "index": device_info["index"],
+                "name": device_info["name"],
+                "maxInputChannels": device_info["maxInputChannels"],
+                "maxOutputChannels": device_info["maxOutputChannels"],
+                "defaultSampleRate": device_info["defaultSampleRate"],
+            }
+        )
+    p.terminate()
+    return devices

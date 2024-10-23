@@ -11,6 +11,9 @@ const IndexPage: React.FC = () => {
   const [isFileUploaded, setIsFileUploaded] = useState(false);
   const [anchorPositionIndex, setAnchorPositionIndex] = useState<number>(0);
   const [realTimePosition, setRealTimePosition] = useState<number>(0);
+  const [inputType, setInputType] = useState<'MIDI' | 'Audio'>('MIDI');
+  const [audioDevices, setAudioDevices] = useState<string[]>([]); // 오디오 디바이스 목록 상태
+  const [selectedDevice, setSelectedDevice] = useState<string>(''); // 선택된 오디오 디바이스 상태
   const osmd = useRef<OpenSheetMusicDisplay | null>(null);
   const cursor = useRef<any>(null);
   const ws = useRef<WebSocket | null>(null);
@@ -216,6 +219,25 @@ const IndexPage: React.FC = () => {
     return 0;
   };
 
+    const fetchAudioDevices = async () => {
+    try {
+      const response = await fetch(`${backendUrl}/audio-devices`);
+      const data = await response.json();
+      setAudioDevices(data.devices);
+      if (data.devices.length > 0) {
+        setSelectedDevice(data.devices[0].name);
+      }
+    } catch (error) {
+      console.error('Error fetching audio devices:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (inputType === 'Audio') {
+      fetchAudioDevices();
+    }
+  }, [inputType]);
+
   return (
     <div>
       <Head>
@@ -224,10 +246,32 @@ const IndexPage: React.FC = () => {
       {/* <CustomAudioPlayer audioPath="audio.wav" startScrolling={playMusic}/> */}
       {isFileUploaded && (
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
+          <button onClick={() => setInputType('Audio')} disabled={inputType === 'Audio'} style={{ padding: '10px 20px', fontSize: '16px', marginLeft: '10px' }}>Audio</button>
+          <button onClick={() => setInputType('MIDI')} disabled={inputType === 'MIDI'} style={{ padding: '10px 20px', fontSize: '16px', marginLeft: '10px' }}>MIDI</button>
+        </div>
+      )}
+      {inputType === 'Audio' && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
+            <select
+              value={selectedDevice}
+              onChange={(e) => setSelectedDevice(e.target.value)}
+              className="px-4 py-2 rounded-md bg-white border border-gray-300"
+            >
+              {audioDevices.map((device, index) => (
+                <option key={index} value={device.name}>
+                  {device.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      {isFileUploaded && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
           <button onClick={playMusic} disabled={isPlaying} style={{ padding: '10px 20px', fontSize: '16px' }}>Play</button>
           <button onClick={stopMusic} disabled={!isPlaying} style={{ padding: '10px 20px', fontSize: '16px', marginLeft: '10px' }}>Stop</button>
         </div>
       )}
+      {/* {!isFileUploaded && <FileUpload onFileUpload={afterFileUpload} />} */}
       <FileUpload onFileUpload={afterFileUpload} />
     </div>
   );

@@ -9,18 +9,18 @@
     "test": "next test"
   },
   "dependencies": {
-    "next": "^12.0.7",
+    "@nextui-org/react": "^2.4.8",
+    "next": "^15.0.1",
     "opensheetmusicdisplay": "^1.8.9",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
-    "react-h5-audio-player": "^3.9.3",
-    "vexflow": "^4.2.5"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-h5-audio-player": "^3.9.3"
   },
   "devDependencies": {
-    "@types/node": "22.7.5",
-    "@types/react": "18.3.11",
-    "eslint": "^8.5.0",
-    "eslint-config-next": "^12.0.7",
-    "typescript": "^4.5.4"
+    "@types/node": "22.7.9",
+    "@types/react": "18.3.12",
+    "eslint": "^9.13.0",
+    "eslint-config-next": "^15.0.1",
+    "typescript": "^5.6.3"
   }
 }

@@ -28,6 +28,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
           method: 'POST',
           body: formData,
         });
+        const data = await response.json();
 
         if (response.ok) {
           console.log('File uploaded successfully');

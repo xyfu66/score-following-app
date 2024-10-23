@@ -19,6 +19,7 @@ from .position_manager import position_manager
 from .stream import AudioStream
 from .utils import (
     convert_frame_to_beat,
+    get_audio_devices,
     preprocess_score,
     find_midi_by_file_id,
     get_score_features,
@@ -88,6 +89,12 @@ def run_score_following(file_id: str) -> None:
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
+
+
+@app.get("/audio-devices")
+async def audio_devices():
+    devices = get_audio_devices()
+    return {"devices": devices}
 
 
 @app.post("/upload")
