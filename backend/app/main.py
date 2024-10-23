@@ -38,13 +38,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DEFAULT_SCORE_FILE = "../resources/Happy_Birthday_To_You_C_Major.mid"
+# DEFAULT_SCORE_FILE = "../resources/Happy_Birthday_To_You_C_Major.mid"
+DEFAULT_SCORE_FILE = "../resources/ex_score_from_xml.mid"
+# DEFAULT_SCORE_FILE = "../resources/midi_score.mid"
 DEFAULT_PERFORMANCE_FILE = "../resources/ex_score_from_mid.wav"
+# DEFAULT_PERFORMANCE_FILE = "../resources/ex_perf.wav"
+# DEFAULT_PERFORMANCE_FILE = "../resources/LuoJ01M.wav"
 current_position = 0
+
+
+def convert_frame_to_beat(score_obj, current_frame):
+    tick = get_ppq(score_obj.parts[0])
+    tick = mido.MidiFile(DEFAULT_SCORE_FILE).ticks_per_beat
+    timeline_time = (current_frame / FRAME_RATE) * tick * 2
+    beat_position = np.round(
+        score_obj.parts[0].beat_map(timeline_time),
+        decimals=2,
+    )
+    nominator, denominator, beat_type = score_obj.parts[0].time_signature_map(
+        timeline_time
+    )
+    ratio = 4 / denominator  # 1/4 note as a unit
+    return beat_position * ratio
 
 
 def run_score_following(score_file, performance_file):
     global current_position
+    current_position = 0
+
     reference_features = get_score_features(score_file)
     alignment_in_progress = True
 
@@ -52,18 +73,13 @@ def run_score_following(score_file, performance_file):
     tick = mido.MidiFile(score_file).ticks_per_beat
     start_time = time.time()
     elapsed_sec = 0
-    current_position = 0
     try:
         while alignment_in_progress:
             with AudioStream() as stream:
                 oltw = OLTW(reference_features, stream.queue)
                 for current_frame in oltw.run():
-                    current_position = np.round(
-                        score_obj.parts[0].beat_map(
-                            current_frame / FRAME_RATE * tick * 2
-                        ),
-                        decimals=2,
-                    )
+                    current_position = convert_frame_to_beat(score_obj, current_frame)
+
             alignment_in_progress = False
     except Exception as e:
         logging.error(f"Error: {e}")
