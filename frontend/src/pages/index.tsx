@@ -7,6 +7,7 @@ import CustomAudioPlayer from '../components/AudioPlayer';
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 const IndexPage: React.FC = () => {
+  const vfRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFileUploaded, setIsFileUploaded] = useState(false);
   const [anchorPositionIndex, setAnchorPositionIndex] = useState<number>(0);
@@ -17,10 +18,35 @@ const IndexPage: React.FC = () => {
   const osmd = useRef<OpenSheetMusicDisplay | null>(null);
   const cursor = useRef<any>(null);
   const ws = useRef<WebSocket | null>(null);
-  const onsetBeats = useRef<number[]>([]);
+  const onsetBeats = useRef<number[] | null>([]);
   const fileId = useRef<string | null>(null);
   const uniqueNotesWRest = useRef<any[]>([]);
   const timeIndexMap = useRef<{ [key: number]: number }>({}); // timeIndexMap: { time: index }
+
+  useEffect(() => {
+    if (inputType === 'Audio') {
+      fetchAudioDevices();
+    }
+  }, [inputType]);
+
+  useEffect(() => {
+    console.log(`Real-time position: ${realTimePosition}, Anchor position index: ${anchorPositionIndex}`);
+    if (realTimePosition != anchorPositionIndex) {
+      // moveToNextOnset();
+      moveToTargetBeat(realTimePosition);
+      console.log("realTimePosition: ", realTimePosition);
+      setAnchorPositionIndex(realTimePosition);
+      console.log('Best position updated to:', anchorPositionIndex);
+    }
+  }, [realTimePosition]);
+
+  useEffect(() => {
+    if (vfRef.current) {
+      osmd.current = new OpenSheetMusicDisplay(vfRef.current);
+      console.log('OSMD initialized');
+    }
+  }, []);
+
 
   const logWithTimestamp = (message: string) => {
     const now = new Date();
@@ -81,28 +107,20 @@ const IndexPage: React.FC = () => {
     }
   };
 
-  const afterFileUpload = async (uploadedOsmd: OpenSheetMusicDisplay, uploadedCursor: any) => {
-    osmd.current = uploadedOsmd;
-    cursor.current = uploadedCursor;
-    registerNoteFromOsmd(osmd.current);
+  const onFileUpload = async (data: { file_id: string; onset_beats: number[]; file_content: string }) => {
+    onsetBeats.current = data.onset_beats;
+    fileId.current = data.file_id;
     setIsFileUploaded(true);
 
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-    if (fileInput && fileInput.files && fileInput.files.length > 0) {
-      const file = fileInput.files[0];
-      const formData = new FormData();
-      formData.append('file', file);
-
-      // Fetch onset positions from the backend
-      const response = await fetch(`${backendUrl}/upload`, {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await response.json();
-      onsetBeats.current = data.onset_beats;
-      fileId.current = data.file_id;
-    } else {
-      console.error('No file selected');
+    if (vfRef.current) {
+      if (!osmd.current) {
+        osmd.current = new OpenSheetMusicDisplay(vfRef.current);
+      }
+      await osmd.current.load(data.file_content);
+      osmd.current.render();
+      cursor.current = osmd.current.cursor;
+      cursor.current.show();
+      registerNoteFromOsmd(osmd.current);
     }
   };
 
@@ -141,16 +159,7 @@ const IndexPage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    console.log(`Real-time position: ${realTimePosition}, Anchor position index: ${anchorPositionIndex}`);
-    if (realTimePosition != anchorPositionIndex) {
-      // moveToNextOnset();
-      moveToTargetBeat(realTimePosition);
-      console.log("realTimePosition: ", realTimePosition);
-      setAnchorPositionIndex(realTimePosition);
-      console.log('Best position updated to:', anchorPositionIndex);
-    }
-  }, [realTimePosition]);
+
 
   const findClosestIndex = (array: number[], target: number) => {
     let closestIndex = array.findLastIndex((value) => value <= target);
@@ -232,11 +241,7 @@ const IndexPage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    if (inputType === 'Audio') {
-      fetchAudioDevices();
-    }
-  }, [inputType]);
+  
 
   return (
     <div>
@@ -271,8 +276,8 @@ const IndexPage: React.FC = () => {
           <button onClick={stopMusic} disabled={!isPlaying} style={{ padding: '10px 20px', fontSize: '16px', marginLeft: '10px' }}>Stop</button>
         </div>
       )}
-      {/* {!isFileUploaded && <FileUpload onFileUpload={afterFileUpload} />} */}
-      <FileUpload onFileUpload={afterFileUpload} />
+      {!isFileUploaded && <FileUpload backendUrl={backendUrl} onFileUpload={onFileUpload} />}
+      <div ref={vfRef}></div>
     </div>
   );
 };

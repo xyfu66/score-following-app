@@ -1,21 +1,11 @@
-import React, { useEffect, useRef } from 'react';
-import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
+import React from 'react';
 
 interface FileUploadProps {
-  onFileUpload: (osmd: OpenSheetMusicDisplay, cursor: any) => void;
+  backendUrl: string;
+  onFileUpload: (data: { file_id: string; onset_beats: number[]; file_content: string }) => void;
 }
 
-const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
-  const osmdContainer = useRef<HTMLDivElement>(null);
-  const osmd = useRef<OpenSheetMusicDisplay | null>(null);
-
-  useEffect(() => {
-    if (osmdContainer.current) {
-      osmd.current = new OpenSheetMusicDisplay(osmdContainer.current);
-      console.log('OSMD initialized');
-    }
-  }, []);
-
+const FileUpload: React.FC<FileUploadProps> = ({ backendUrl, onFileUpload }) => {
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && (file.type === 'application/xml' || file.type === 'text/xml' || /\.(xml|musicxml|mxl)$/i.test(file.name))) {
@@ -23,8 +13,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
       formData.append('file', file);
 
       try {
-        console.log('process.env.NEXT_PUBLIC_BACKEND_URL: ', process.env.NEXT_PUBLIC_BACKEND_URL);
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/upload`, {
+        const response = await fetch(`${backendUrl}/upload`, {
           method: 'POST',
           body: formData,
         });
@@ -35,13 +24,11 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
 
           const reader = new FileReader();
           reader.onload = (e) => {
-            if (osmd.current && e.target?.result) {
-              osmd.current.load(e.target.result as string).then(() => {
-                osmd.current!.render();
-                const cursor = osmd.current!.Cursor;
-                cursor.show();
-                console.log('Sheet music rendered');
-                onFileUpload(osmd.current!, cursor);
+            if (e.target?.result) {
+              onFileUpload({
+                file_id: data.file_id,
+                onset_beats: data.onset_beats,
+                file_content: e.target.result as string,
               });
             }
           };
@@ -60,7 +47,6 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
   return (
     <div>
       <input type="file" accept=".xml,.musicxml,.mxl" onChange={handleFileUpload} />
-      <div ref={osmdContainer} style={{ width: '100%', height: '100vh' }}></div>
     </div>
   );
 };
