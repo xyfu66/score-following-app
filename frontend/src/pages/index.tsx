@@ -108,18 +108,6 @@ const IndexPage: React.FC = () => {
     if (cursor.current && fileId.current) {
       resetStatus();
 
-      const patchResponse = await fetch(`${backendUrl}/align`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ file_id: fileId.current, onset_beats: onsetBeats.current }),
-      });
-
-      if (!patchResponse.ok) {
-        throw new Error('Failed to send PATCH request');
-      }
-
       const wsUrl = `${backendUrl.replace(/^http/, 'ws')}/ws`;
       ws.current = new WebSocket(wsUrl);
       ws.current.onopen = () => {

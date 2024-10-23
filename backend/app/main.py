@@ -3,75 +3,65 @@ import logging
 import shutil
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import asynccontextmanager
 from datetime import datetime
-from http import HTTPStatus
+from pathlib import Path
 
-import mido
 import numpy as np
 import partitura
-from fastapi import (
-    BackgroundTasks,
-    FastAPI,
-    File,
-    UploadFile,
-    WebSocket,
-)
+from fastapi import FastAPI, File, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from partitura.io.exportmidi import get_ppq
 from starlette.websockets import WebSocketState
 
-from .config import FRAME_RATE
 from .oltw import OLTW
+from .position_manager import position_manager
 from .stream import AudioStream
-from .utils import get_score_features
+from .utils import (
+    convert_frame_to_beat,
+    convert_musicxml_to_midi,
+    find_midi_by_file_id,
+    get_score_features,
+)
 
-app = FastAPI()
-origins = ["http://localhost:50003", "http://127.0.0.1:50003"]
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    upload_dir = Path("./uploads")
+    if upload_dir.exists() and upload_dir.is_dir():
+        for file in upload_dir.iterdir():
+            if file.is_file():
+                file.unlink()
+        print("Uploads directory cleaned up.")
+
+
+app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["http://localhost:50003", "http://127.0.0.1:50003"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# DEFAULT_SCORE_FILE = "../resources/Happy_Birthday_To_You_C_Major.mid"
-DEFAULT_SCORE_FILE = "../resources/ex_score_from_xml.mid"
-# DEFAULT_SCORE_FILE = "../resources/midi_score.mid"
-DEFAULT_PERFORMANCE_FILE = "../resources/ex_score_from_mid.wav"
-# DEFAULT_PERFORMANCE_FILE = "../resources/ex_perf.wav"
-# DEFAULT_PERFORMANCE_FILE = "../resources/LuoJ01M.wav"
-current_position = 0
+executor = ThreadPoolExecutor(max_workers=1)
 
 
-def convert_frame_to_beat(score_obj, current_frame):
-    tick = get_ppq(score_obj.parts[0])
-    tick = mido.MidiFile(DEFAULT_SCORE_FILE).ticks_per_beat
-    timeline_time = (current_frame / FRAME_RATE) * tick * 2
-    beat_position = np.round(
-        score_obj.parts[0].beat_map(timeline_time),
-        decimals=2,
-    )
-    nominator, denominator, _ = score_obj.parts[0].time_signature_map(timeline_time)
-    ratio = 4 / denominator  # 1/4 note as a unit
-    return beat_position * ratio
+def run_score_following(file_id: str) -> None:
+    score_midi = find_midi_by_file_id(file_id)  # .mid
+    print(f"Running score following with {score_midi}")
 
-
-def run_score_following(score_file, performance_file):
-    global current_position
-    current_position = 0
-
-    reference_features = get_score_features(score_file)
+    reference_features = get_score_features(score_midi)
     alignment_in_progress = True
 
-    score_obj = partitura.load_score_midi(score_file)
+    score_obj = partitura.load_score_midi(score_midi)
     try:
         while alignment_in_progress:
             with AudioStream() as stream:
                 oltw = OLTW(reference_features, stream.queue)
                 for current_frame in oltw.run():
-                    current_position = convert_frame_to_beat(score_obj, current_frame)
+                    position_in_beat = convert_frame_to_beat(score_obj, current_frame)
+                    position_manager.set_position(file_id, position_in_beat)
 
             alignment_in_progress = False
     except Exception as e:
@@ -94,77 +84,37 @@ def run_score_following(score_file, performance_file):
     #         alignment_in_progress = False
 
 
+# ================== API ==================
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
 
 
-@app.patch(
-    "/align",
-    status_code=HTTPStatus.ACCEPTED,
-    tags=["Interactive API"],
-)
-async def alignment(
-    background_tasks: BackgroundTasks,
-):
-
-    background_tasks.add_task(
-        run_score_following,
-        score_file=DEFAULT_SCORE_FILE,
-        performance_file=DEFAULT_PERFORMANCE_FILE,
-    )
-
-    return {"response": f"alignment task is running in the background"}
-
-
 @app.post("/upload")
 def upload_file(file: UploadFile = File(...)):
-    file_id = str(uuid.uuid4())
-    file_path = f"uploads/{file.filename}"
+    file_id = str(uuid.uuid4())[:8]
+    file_path = Path(f"./uploads/{file_id}_{file.filename}")
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    try:
-        score_obj = partitura.load_score_midi(DEFAULT_SCORE_FILE)
-        onset_beats = np.unique(score_obj.note_array()["onset_beat"])
-        tick = mido.MidiFile(DEFAULT_SCORE_FILE).ticks_per_beat
-
-        onset_seconds = np.array(
-            [score_obj.parts[0].inv_beat_map(beat) / (tick * 2) for beat in onset_beats]
-        )
-        onset_frames = (onset_seconds * FRAME_RATE).astype(int).tolist()
-        onset_beats_rev = np.array(
-            [score_obj.parts[0].beat_map(sec * tick * 2) for sec in onset_seconds]
-        )
-    except Exception as e:
-        print(f"Error: {e}")
-        return {"error": str(e)}
-
-    print(f"ticks_per_beat: {get_ppq(score_obj.parts[0])}, tick: {tick}")
-    print(f"onset_beats: {onset_beats}, {len(onset_beats)}")
-    print(f"onset_seconds: {onset_seconds}, {len(onset_seconds)}")
-    print(f"onset_frames: {onset_frames}, {len(onset_frames)}")
-    print(f"onset_beats_rev: {onset_beats_rev}, {len(onset_beats_rev)}")
-    print(f"onset_beats_rev same? {np.allclose(onset_beats, onset_beats_rev)}")
-
-    return {
-        "file_id": file_id,
-        "filename": file.filename,
-        "onset_beats": onset_beats.tolist(),
-    }
+    convert_musicxml_to_midi(file_path, f"./uploads/{file_path.stem}.mid")
+    return {"file_id": file_id}
 
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    global current_position
-
     await websocket.accept()
 
     data = await websocket.receive_json()  # data: {"onset_beats": [0.5, 1, 1.5, ...]}
-    print(f"Received data: {data}, {type(data)}")
+    file_id = data["file_id"]
+    print(f"Received data: {data}, file_id: {file_id}")
+
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(executor, run_score_following, file_id)
 
     try:
         while websocket.client_state == WebSocketState.CONNECTED:
+            current_position = position_manager.get_position(file_id)
             print(
                 f"[{datetime.now().strftime('%H:%M:%S.%f')}] Current position: {current_position}"
             )
@@ -174,5 +124,5 @@ async def websocket_endpoint(websocket: WebSocket):
 
     except Exception as e:
         print(f"Websocket send data error: {e}, {type(e)}")
-        current_position = 0
+        position_manager.reset()
         return
