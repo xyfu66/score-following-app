@@ -25,6 +25,9 @@ $ conda activate sfa
 ```bash
 $ cd frontend/
 $ npm install
+
+# Create .env.local
+$ echo "NEXT_PUBLIC_BACKEND_URL=http://127.0.0.1:8000" > .env.local
 ```
 
 ## Running the app

@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import librosa
@@ -112,17 +113,21 @@ def get_audio_devices() -> list[dict]:
         List of audio devices with index and name
 
     """
-    p = pyaudio.PyAudio()
-    device_count = p.get_device_count()
-    default_device = p.get_default_input_device_info()
-    devices = []
-    for i in range(device_count):
-        device_info = p.get_device_info_by_index(i)
-        if device_info == default_device:
-            continue
-        devices.append({"index": device_info["index"], "name": device_info["name"]})
-    devices.insert(
-        0, {"index": default_device["index"], "name": default_device["name"]}
-    )
-    p.terminate()
+    try:
+        p = pyaudio.PyAudio()
+        device_count = p.get_device_count()
+        default_device = p.get_default_input_device_info()
+        devices = []
+        for i in range(device_count):
+            device_info = p.get_device_info_by_index(i)
+            if device_info == default_device:
+                continue
+            devices.append({"index": device_info["index"], "name": device_info["name"]})
+        devices.insert(
+            0, {"index": default_device["index"], "name": default_device["name"]}
+        )
+        p.terminate()
+    except Exception as e:
+        logging.error(f"Error: {e}")
+        devices = [{"index": 0, "name": "No audio devices found"}]
     return devices
