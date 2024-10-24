@@ -36,7 +36,7 @@ def process_chroma_decay(y, sr, hop_length, n_fft) -> np.ndarray:
 
 
 def get_score_features(score_path: Path, feature_type: str = "chroma") -> np.ndarray:
-    score_audio_path = f"./uploads/{score_path.stem}.wav"
+    score_audio_path = score_path.with_suffix(".wav")
     y, sr = librosa.load(score_audio_path, sr=SAMPLE_RATE)
     return librosa.feature.chroma_stft(y=y, sr=sr, hop_length=HOP_LENGTH, n_fft=N_FFT).T
 

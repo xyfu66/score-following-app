@@ -6,7 +6,7 @@ import scipy
 
 from .config import FRAME_PER_SEG, FRAME_RATE
 
-WINDOW_SIZE = 3  # seconds
+WINDOW_SIZE = 5  # seconds
 DEFAULT_LOCAL_COST = "euclidean"
 MAX_RUN_COUNT = 30
 
