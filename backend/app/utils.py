@@ -3,10 +3,10 @@ from pathlib import Path
 import librosa
 import numpy as np
 import partitura
+import pyaudio
+from midi2audio import FluidSynth
 from partitura.io.exportmidi import get_ppq
 from partitura.score import Score
-from midi2audio import FluidSynth
-import pyaudio
 
 from .config import FRAME_RATE, HOP_LENGTH, N_FFT, SAMPLE_RATE, SOUND_FONT_PATH
 
@@ -38,12 +38,34 @@ def process_chroma_decay(y, sr, hop_length, n_fft) -> np.ndarray:
 def get_score_features(score_path: Path, feature_type: str = "chroma") -> np.ndarray:
     score_audio_path = score_path.with_suffix(".wav")
     y, sr = librosa.load(score_audio_path, sr=SAMPLE_RATE)
-    return librosa.feature.chroma_stft(y=y, sr=sr, hop_length=HOP_LENGTH, n_fft=N_FFT).T
+
+    if feature_type == "chroma":
+        score_features = process_chroma(y, sr, HOP_LENGTH, N_FFT)
+    elif feature_type == "chroma_decay":
+        score_features = process_chroma_decay(y, sr, HOP_LENGTH, N_FFT)
+    else:
+        raise ValueError(f"Invalid feature type: {feature_type}")
+    return score_features
 
 
-def convert_frame_to_beat(score_obj: Score, current_frame: int) -> float:
+def convert_frame_to_beat(
+    score_obj: Score, current_frame: int, frame_rate: int = FRAME_RATE
+) -> float:
+    """
+    Convert frame number to absolute beat position in the score.
+    For example, if the relative beat position is 0.5 and time signature is 12/8, we will return 0.5 * 4 / 8 = 0.25
+
+    Parameters
+    ----------
+    score_obj : Score
+        Partitura score object
+    frame_rate : int
+        Frame rate of the audio stream
+    current_frame : int
+        Current frame number
+    """
     tick = get_ppq(score_obj.parts[0])
-    timeline_time = (current_frame / FRAME_RATE) * tick * 2
+    timeline_time = (current_frame / frame_rate) * tick * 2
     beat_position = np.round(
         score_obj.parts[0].beat_map(timeline_time),
         decimals=2,
@@ -79,20 +101,28 @@ def find_midi_by_file_id(file_id: str, directory: Path = Path("./uploads")) -> P
     return None
 
 
-def get_audio_devices():
+def get_audio_devices() -> list[dict]:
+    """
+    Get the list of audio devices available on the system
+    The default device is always the first one in the list.
+
+    Returns
+    -------
+    devices: list[dict]
+        List of audio devices with index and name
+
+    """
     p = pyaudio.PyAudio()
     device_count = p.get_device_count()
+    default_device = p.get_default_input_device_info()
     devices = []
     for i in range(device_count):
         device_info = p.get_device_info_by_index(i)
-        devices.append(
-            {
-                "index": device_info["index"],
-                "name": device_info["name"],
-                "maxInputChannels": device_info["maxInputChannels"],
-                "maxOutputChannels": device_info["maxOutputChannels"],
-                "defaultSampleRate": device_info["defaultSampleRate"],
-            }
-        )
+        if device_info == default_device:
+            continue
+        devices.append({"index": device_info["index"], "name": device_info["name"]})
+    devices.insert(
+        0, {"index": default_device["index"], "name": default_device["name"]}
+    )
     p.terminate()
     return devices

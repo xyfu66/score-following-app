@@ -177,7 +177,7 @@ const IndexPage: React.FC = () => {
       let targetIndex = timeIndexMap.current[targetBeat];
 
       if (currentIndex === undefined) {
-        logWithTimestamp('Invalid current beat position');
+        logWithTimestamp(`Invalid current beat position. Cursor's current beat: ${currentBeat}`);
         return;
       }
 
@@ -199,6 +199,10 @@ const IndexPage: React.FC = () => {
         for (let i = 0; i < Math.abs(steps); i++) {
           cursor.current.previous();
         }
+      }
+
+      if (getCursorCurrentPosition() < 0) {
+        cursor.current.reset();
       }
 
       cursor.current.show();

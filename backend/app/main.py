@@ -100,7 +100,9 @@ async def audio_devices():
 @app.post("/upload")
 def upload_file(file: UploadFile = File(...)):
     file_id = str(uuid.uuid4())[:8]
-    file_path = Path(f"./uploads/{file_id}_{file.filename}")
+    upload_dir = Path("./uploads")
+    upload_dir.mkdir(exist_ok=True)
+    file_path = upload_dir / f"{file_id}_{file.filename}"
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
