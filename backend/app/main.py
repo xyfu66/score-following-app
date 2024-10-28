@@ -2,6 +2,7 @@ import asyncio
 import logging
 import shutil
 import time
+import traceback
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
@@ -12,29 +13,34 @@ import numpy as np
 import partitura
 from fastapi import FastAPI, File, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from matchmaker.dp import OnlineTimeWarpingDixon
+from matchmaker.io.audio import AudioStream
 from starlette.websockets import WebSocketState
 
-from .oltw import OLTW
 from .position_manager import position_manager
-from .stream import AudioStream
 from .utils import (
     convert_frame_to_beat,
-    get_audio_devices,
-    preprocess_score,
     find_midi_by_file_id,
+    get_audio_devices,
     get_score_features,
+    preprocess_score,
 )
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    yield
     upload_dir = Path("./uploads")
+    # Clean up at the start
     if upload_dir.exists() and upload_dir.is_dir():
         for file in upload_dir.iterdir():
             if file.is_file():
                 file.unlink()
-        print("Uploads directory cleaned up.")
+    yield
+    # Clean up at the end
+    if upload_dir.exists() and upload_dir.is_dir():
+        for file in upload_dir.iterdir():
+            if file.is_file():
+                file.unlink()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -58,15 +64,16 @@ def run_score_following(file_id: str) -> None:
     score_obj = partitura.load_score_midi(score_midi)
     try:
         while alignment_in_progress:
-            with AudioStream() as stream:
-                oltw = OLTW(reference_features, stream.queue)
-                for current_frame in oltw.run():
+            with AudioStream(device_name_or_index="MacBook Pro Microphone") as stream:
+                otwd = OnlineTimeWarpingDixon(reference_features, stream.queue)
+                for current_frame in otwd.run():
                     position_in_beat = convert_frame_to_beat(score_obj, current_frame)
                     position_manager.set_position(file_id, position_in_beat)
 
             alignment_in_progress = False
     except Exception as e:
         logging.error(f"Error: {e}")
+        traceback.print_exc()
         return {"error": str(e)}
 
     # Simulation version

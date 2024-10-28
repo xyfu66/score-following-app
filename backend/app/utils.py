@@ -54,7 +54,7 @@ def convert_frame_to_beat(
 ) -> float:
     """
     Convert frame number to absolute beat position in the score.
-    For example, if the relative beat position is 0.5 and time signature is 12/8, we will return 0.5 * 4 / 8 = 0.25
+    For example, if the relative beat position is 0.5 and time signature is 12/8, we will return 0.5 * (4 / 8) = 0.25
 
     Parameters
     ----------
