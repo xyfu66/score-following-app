@@ -73,11 +73,13 @@ async def websocket_endpoint(websocket: WebSocket):
 
     data = await websocket.receive_json()  # data: {"onset_beats": [0.5, 1, 1.5, ...]}
     file_id = data["file_id"]
-    print(f"Received data: {data}, file_id: {file_id}")
+    device = data["device"]
+    print(device)
+    print(f"Received data: {data}, file_id: {file_id}, device: {device}")
 
     # Run score following in a separate thread (as a background task)
     loop = asyncio.get_event_loop()
-    loop.run_in_executor(executor, run_score_following, file_id)
+    loop.run_in_executor(executor, run_score_following, file_id, device)
 
     try:
         while websocket.client_state == WebSocketState.CONNECTED:

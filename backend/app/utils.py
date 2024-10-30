@@ -161,7 +161,7 @@ def run_score_following_backup(file_id: str) -> None:
         return {"error": str(e)}
 
 
-def run_score_following(file_id: str) -> None:
+def run_score_following(file_id: str, device: str) -> None:
     score_midi = find_midi_by_file_id(file_id)  # .mid
     print(f"Running score following with {score_midi}")
 
@@ -171,6 +171,7 @@ def run_score_following(file_id: str) -> None:
         input_type="audio",
         feature_type="chroma",
         method="dixon",
+        device_name_or_index=device,
     )
     try:
         while alignment_in_progress:
