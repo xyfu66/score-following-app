@@ -12,6 +12,7 @@ from matchmaker import Matchmaker
 from midi2audio import FluidSynth
 from partitura.io.exportmidi import get_ppq
 from partitura.score import Score
+from partitura.io.exportaudio import save_wav_fluidsynth
 
 from .config import FRAME_RATE, HOP_LENGTH, N_FFT, SAMPLE_RATE, SOUND_FONT_PATH
 from .position_manager import position_manager
@@ -90,14 +91,13 @@ def preprocess_score(score_xml: Path) -> None:
     score_xml : Path
         Path to the score xml file
     """
-    score_midi_path = f"./uploads/{score_xml.stem}.mid"
     score_obj = partitura.load_musicxml(score_xml)
+
+    score_midi_path = f"./uploads/{score_xml.stem}.mid"
     partitura.save_score_midi(score_obj, score_midi_path)
 
     score_audio_path = f"./uploads/{score_xml.stem}.wav"
-    fs = FluidSynth(SOUND_FONT_PATH, sample_rate=SAMPLE_RATE)
-    fs.midi_to_audio(score_midi_path, score_audio_path)
-    return score_midi_path, score_audio_path
+    partitura.save_wav_fluidsynth(score_obj, score_audio_path)
 
 
 def find_midi_by_file_id(file_id: str, directory: Path = Path("./uploads")) -> Path:
