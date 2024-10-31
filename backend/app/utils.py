@@ -138,7 +138,7 @@ def get_audio_devices() -> list[dict]:
     return devices
 
 
-def run_score_following_backup(file_id: str) -> None:
+def run_score_following_backup(file_id: str, device: str) -> None:
     score_midi = find_midi_by_file_id(file_id)  # .mid
     print(f"Running score following with {score_midi}")
 
@@ -148,7 +148,7 @@ def run_score_following_backup(file_id: str) -> None:
     score_obj = partitura.load_score_midi(score_midi)
     try:
         while alignment_in_progress:
-            with AudioStream() as stream:
+            with AudioStream(device_name_or_index=device) as stream:
                 otwd = OnlineTimeWarpingDixon(reference_features, stream.queue)
                 for current_frame in otwd.run():
                     position_in_beat = convert_frame_to_beat(score_obj, current_frame)
