@@ -1,20 +1,16 @@
 import logging
-from pathlib import Path
 import traceback
+from pathlib import Path
 
 import librosa
 import numpy as np
 import partitura
 import pyaudio
-from matchmaker.dp import OnlineTimeWarpingDixon
-from matchmaker.io.audio import AudioStream
 from matchmaker import Matchmaker
-from midi2audio import FluidSynth
 from partitura.io.exportmidi import get_ppq
 from partitura.score import Score
-from partitura.io.exportaudio import save_wav_fluidsynth
 
-from .config import FRAME_RATE, HOP_LENGTH, N_FFT, SAMPLE_RATE, SOUND_FONT_PATH
+from .config import FRAME_RATE, HOP_LENGTH, N_FFT, SAMPLE_RATE
 from .position_manager import position_manager
 
 
@@ -136,29 +132,6 @@ def get_audio_devices() -> list[dict]:
         logging.error(f"Error: {e}")
         devices = [{"index": 0, "name": "No audio devices found"}]
     return devices
-
-
-def run_score_following_backup(file_id: str, device: str) -> None:
-    score_midi = find_midi_by_file_id(file_id)  # .mid
-    print(f"Running score following with {score_midi}")
-
-    reference_features = get_score_features(score_midi)
-    alignment_in_progress = True
-
-    score_obj = partitura.load_score_midi(score_midi)
-    try:
-        while alignment_in_progress:
-            with AudioStream(device_name_or_index=device) as stream:
-                otwd = OnlineTimeWarpingDixon(reference_features, stream.queue)
-                for current_frame in otwd.run():
-                    position_in_beat = convert_frame_to_beat(score_obj, current_frame)
-                    position_manager.set_position(file_id, position_in_beat)
-
-            alignment_in_progress = False
-    except Exception as e:
-        logging.error(f"Error: {e}")
-        traceback.print_exc()
-        return {"error": str(e)}
 
 
 def run_score_following(file_id: str, device: str) -> None:

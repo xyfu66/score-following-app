@@ -16,7 +16,6 @@ from .utils import (
     get_audio_devices,
     preprocess_score,
     run_score_following,
-    run_score_following_backup,
 )
 
 
@@ -84,8 +83,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     # Run score following in a separate thread (as a background task)
     loop = asyncio.get_event_loop()
-    # loop.run_in_executor(executor, run_score_following, file_id, device)
-    loop.run_in_executor(executor, run_score_following_backup, file_id, device)
+    loop.run_in_executor(executor, run_score_following, file_id, device)
 
     try:
         while websocket.client_state == WebSocketState.CONNECTED:
