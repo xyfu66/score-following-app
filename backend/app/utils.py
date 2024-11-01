@@ -8,7 +8,7 @@ import partitura
 import pyaudio
 from matchmaker import Matchmaker
 from partitura.io.exportmidi import get_ppq
-from partitura.score import Score
+from partitura.score import Score, Part
 
 from .config import FRAME_RATE, HOP_LENGTH, N_FFT, SAMPLE_RATE
 from .position_manager import position_manager
@@ -51,31 +51,10 @@ def get_score_features(score_path: Path, feature_type: str = "chroma") -> np.nda
     return score_features
 
 
-def convert_frame_to_beat(
-    score_obj: Score, current_frame: int, frame_rate: int = FRAME_RATE
-) -> float:
-    """
-    Convert frame number to absolute beat position in the score.
-    For example, if the relative beat position is 0.5 and time signature is 12/8, we will return 0.5 * (4 / 8) = 0.25
-
-    Parameters
-    ----------
-    score_obj : Score
-        Partitura score object
-    frame_rate : int
-        Frame rate of the audio stream
-    current_frame : int
-        Current frame number
-    """
-    tick = get_ppq(score_obj.parts[0])
-    timeline_time = (current_frame / frame_rate) * tick * 2
-    beat_position = np.round(
-        score_obj.parts[0].beat_map(timeline_time),
-        decimals=2,
-    )
-    nominator, denominator, _ = score_obj.parts[0].time_signature_map(timeline_time)
-    ratio = 4 / denominator  # 1/4 note as a unit
-    return beat_position * ratio
+def convert_beat_to_quarter(score_part: Part, current_beat: float) -> float:
+    timeline_time = score_part.inv_beat_map(current_beat)
+    quarter_position = score_part.quarter_map(timeline_time)
+    return float(quarter_position)
 
 
 def preprocess_score(score_xml: Path) -> None:
@@ -136,6 +115,7 @@ def get_audio_devices() -> list[dict]:
 
 def run_score_following(file_id: str, device: str) -> None:
     score_midi = find_midi_by_file_id(file_id)  # .mid
+    score_part = partitura.load_score_as_part(score_midi)
     print(f"Running score following with {score_midi}")
 
     alignment_in_progress = True
@@ -143,14 +123,15 @@ def run_score_following(file_id: str, device: str) -> None:
         score_file=score_midi,
         input_type="audio",
         feature_type="chroma",
-        method="dixon",
+        method="arzt",
         device_name_or_index=device,
     )
     try:
         while alignment_in_progress:
             print("Running score following...")
             for current_position in mm.run():
-                position_manager.set_position(file_id, current_position)
+                quarter_position = convert_beat_to_quarter(score_part, current_position)
+                position_manager.set_position(file_id, quarter_position)
             alignment_in_progress = False
     except Exception as e:
         logging.error(f"Error: {e}")

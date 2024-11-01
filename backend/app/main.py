@@ -79,7 +79,7 @@ async def websocket_endpoint(websocket: WebSocket):
     file_id = data["file_id"]
     device = data["device"]
     print(device)
-    print(f"Received data: {data}, file_id: {file_id}, device: {device}")
+    print(f"Received data: {data}")
 
     # Run score following in a separate thread (as a background task)
     loop = asyncio.get_event_loop()
