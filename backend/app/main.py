@@ -5,6 +5,9 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
+import warnings
+
+warnings.filterwarnings("ignore", module="partitura")
 
 import numpy as np
 from fastapi import FastAPI, File, UploadFile, WebSocket
