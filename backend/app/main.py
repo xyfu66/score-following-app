@@ -91,9 +91,9 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while websocket.client_state == WebSocketState.CONNECTED:
             current_position = position_manager.get_position(file_id)
-            print(
-                f"[{datetime.now().strftime('%H:%M:%S.%f')}] Current position: {current_position}"
-            )
+            # print(
+            #     f"[{datetime.now().strftime('%H:%M:%S.%f')}] Current position: {current_position}"
+            # )
 
             await websocket.send_json({"beat_position": current_position})
             await asyncio.sleep(0.1)

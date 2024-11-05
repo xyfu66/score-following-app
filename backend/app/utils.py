@@ -75,10 +75,13 @@ def preprocess_score(score_xml: Path) -> None:
     partitura.save_wav_fluidsynth(score_obj, score_audio_path)
 
 
-def find_midi_by_file_id(file_id: str, directory: Path = Path("./uploads")) -> Path:
+def find_score_file_by_id(file_id: str, directory: Path = Path("./uploads")) -> Path:
     for file in directory.iterdir():
-        if file.is_file() and file.stem.startswith(file_id) and file.suffix == ".mid":
-            return file
+        if file.is_file() and file.stem.startswith(file_id):
+            if file.suffix == ".xml":
+                return file
+            elif file.suffix in [".mid", ".midi"]:
+                return file
     return None
 
 
@@ -114,7 +117,7 @@ def get_audio_devices() -> list[dict]:
 
 
 def run_score_following(file_id: str, device: str) -> None:
-    score_midi = find_midi_by_file_id(file_id)  # .mid
+    score_midi = find_score_file_by_id(file_id)  # .mid
     score_part = partitura.load_score_as_part(score_midi)
     print(f"Running score following with {score_midi}")
 
@@ -123,7 +126,7 @@ def run_score_following(file_id: str, device: str) -> None:
         score_file=score_midi,
         input_type="audio",
         feature_type="chroma",
-        method="arzt",
+        method="dixon",
         device_name_or_index=device,
     )
     try:
