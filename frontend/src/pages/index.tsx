@@ -133,7 +133,12 @@ const IndexPage: React.FC = () => {
       ws.current = new WebSocket(wsUrl);
       ws.current.onopen = () => {
         console.log('WebSocket connection opened');
-        ws.current?.send(JSON.stringify({ file_id: fileId.current, onset_beats: onsetBeats.current, device: selectedDevice }));
+        ws.current?.send(JSON.stringify({ 
+          file_id: fileId.current, 
+          onset_beats: onsetBeats.current, 
+          input_type: inputType.toLowerCase(), 
+          device: selectedDevice 
+        }));
       };
       ws.current.onmessage = (event) => {
         const data = JSON.parse(event.data);

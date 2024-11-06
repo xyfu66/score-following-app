@@ -2,53 +2,12 @@ import logging
 import traceback
 from pathlib import Path
 
-import librosa
-import numpy as np
 import partitura
 import pyaudio
 from matchmaker import Matchmaker
-from partitura.io.exportmidi import get_ppq
-from partitura.score import Score, Part
+from partitura.score import Part
 
-from .config import FRAME_RATE, HOP_LENGTH, N_FFT, SAMPLE_RATE
 from .position_manager import position_manager
-
-
-def process_chroma(y, sr, hop_length, n_fft) -> np.ndarray:
-    chroma = librosa.feature.chroma_stft(
-        y=y,
-        sr=sr,
-        hop_length=hop_length,
-        n_fft=n_fft,
-        center=False,
-    )
-    return chroma.T  # (time, n_chroma)
-
-
-def process_chroma_decay(y, sr, hop_length, n_fft) -> np.ndarray:
-    chroma = librosa.feature.chroma_stft(
-        y=y,
-        sr=sr,
-        hop_length=hop_length,
-        n_fft=n_fft,
-        center=False,
-    )
-    diff = np.diff(chroma, axis=0, prepend=chroma[0:1, :])
-    half_wave_rectification = np.maximum(diff, 0)
-    return half_wave_rectification.T  # (time, n_chroma)
-
-
-def get_score_features(score_path: Path, feature_type: str = "chroma") -> np.ndarray:
-    score_audio_path = score_path.with_suffix(".wav")
-    y, sr = librosa.load(score_audio_path, sr=SAMPLE_RATE)
-
-    if feature_type == "chroma":
-        score_features = process_chroma(y, sr, HOP_LENGTH, N_FFT)
-    elif feature_type == "chroma_decay":
-        score_features = process_chroma_decay(y, sr, HOP_LENGTH, N_FFT)
-    else:
-        raise ValueError(f"Invalid feature type: {feature_type}")
-    return score_features
 
 
 def convert_beat_to_quarter(score_part: Part, current_beat: float) -> float:
@@ -116,7 +75,7 @@ def get_audio_devices() -> list[dict]:
     return devices
 
 
-def run_score_following(file_id: str, device: str) -> None:
+def run_score_following(file_id: str, input_type: str, device: str) -> None:
     score_midi = find_score_file_by_id(file_id)  # .mid
     score_part = partitura.load_score_as_part(score_midi)
     print(f"Running score following with {score_midi}")
@@ -124,9 +83,7 @@ def run_score_following(file_id: str, device: str) -> None:
     alignment_in_progress = True
     mm = Matchmaker(
         score_file=score_midi,
-        input_type="audio",
-        feature_type="chroma",
-        method="dixon",
+        input_type=input_type,
         device_name_or_index=device,
     )
     try:

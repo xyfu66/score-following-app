@@ -1,25 +1,20 @@
 import asyncio
 import shutil
 import uuid
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
-import warnings
 
 warnings.filterwarnings("ignore", module="partitura")
 
-import numpy as np
 from fastapi import FastAPI, File, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.websockets import WebSocketState
 
 from .position_manager import position_manager
-from .utils import (
-    get_audio_devices,
-    preprocess_score,
-    run_score_following,
-)
+from .utils import get_audio_devices, preprocess_score, run_score_following
 
 
 @asynccontextmanager
@@ -76,24 +71,26 @@ def upload_file(file: UploadFile = File(...)):
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    position_manager.reset()
     await websocket.accept()
 
     data = await websocket.receive_json()  # data: {"onset_beats": [0.5, 1, 1.5, ...]}
-    file_id = data["file_id"]
-    device = data["device"]
+    file_id = data.get("file_id")
+    input_type = data.get("input_type", "audio")
+    device = data.get("device")
     print(device)
     print(f"Received data: {data}")
 
     # Run score following in a separate thread (as a background task)
     loop = asyncio.get_event_loop()
-    loop.run_in_executor(executor, run_score_following, file_id, device)
+    loop.run_in_executor(executor, run_score_following, file_id, input_type, device)
 
     try:
         while websocket.client_state == WebSocketState.CONNECTED:
             current_position = position_manager.get_position(file_id)
-            # print(
-            #     f"[{datetime.now().strftime('%H:%M:%S.%f')}] Current position: {current_position}"
-            # )
+            print(
+                f"[{datetime.now().strftime('%H:%M:%S.%f')}] Current position: {current_position}"
+            )
 
             await websocket.send_json({"beat_position": current_position})
             await asyncio.sleep(0.1)
