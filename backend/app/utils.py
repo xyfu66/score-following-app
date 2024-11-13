@@ -2,6 +2,7 @@ import logging
 import traceback
 from pathlib import Path
 
+import mido
 import partitura
 import pyaudio
 from matchmaker import Matchmaker
@@ -72,6 +73,27 @@ def get_audio_devices() -> list[dict]:
     except Exception as e:
         logging.error(f"Error: {e}")
         devices = [{"index": 0, "name": "No audio devices found"}]
+    return devices
+
+
+def get_midi_devices() -> list[dict]:
+    """
+    Get the list of midi devices available on the system
+    The default device is always the first one in the list.
+
+    Returns
+    -------
+    devices: list[dict]
+        List of midi devices with index and name
+
+    """
+    try:
+        devices = []
+        for i, device in enumerate(mido.get_input_names()):
+            devices.append({"index": i, "name": device})
+    except Exception as e:
+        logging.error(f"Error: {e}")
+        devices = [{"index": 0, "name": "No midi devices found"}]
     return devices
 
 

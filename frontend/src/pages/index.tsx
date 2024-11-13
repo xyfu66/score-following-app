@@ -12,9 +12,11 @@ const IndexPage: React.FC = () => {
   const [isFileUploaded, setIsFileUploaded] = useState(false);
   const [anchorPositionIndex, setAnchorPositionIndex] = useState<number>(0);
   const [realTimePosition, setRealTimePosition] = useState<number>(0);
-  const [inputType, setInputType] = useState<'MIDI' | 'Audio'>('MIDI');
-  const [audioDevices, setAudioDevices] = useState<string[]>([]); // 오디오 디바이스 목록 상태
-  const [selectedDevice, setSelectedDevice] = useState<string>(''); // 선택된 오디오 디바이스 상태
+  const [inputType, setInputType] = useState<'MIDI' | 'Audio'>('');
+  const [audioDevices, setAudioDevices] = useState<string[]>([]);
+  const [selectedAudioDevice, setSelectedAudioDevice] = useState<string>('');
+  const [midiDevices, setMidiDevices] = useState<string[]>([]);
+  const [selectedMidiDevice, setSelectedMidiDevice] = useState<string>('');
   const osmd = useRef<OpenSheetMusicDisplay | null>(null);
   const cursor = useRef<any>(null);
   const ws = useRef<WebSocket | null>(null);
@@ -27,12 +29,14 @@ const IndexPage: React.FC = () => {
     if (inputType === 'Audio') {
       fetchAudioDevices();
     }
+    else if (inputType === 'MIDI') {
+      fetchMidiDevices();
+    }
   }, [inputType]);
 
   useEffect(() => {
     console.log(`Real-time position: ${realTimePosition}, Anchor position index: ${anchorPositionIndex}`);
     if (realTimePosition != anchorPositionIndex) {
-      // moveToNextOnset();
       moveToTargetBeat(realTimePosition);
       console.log("realTimePosition: ", realTimePosition);
       setAnchorPositionIndex(realTimePosition);
@@ -137,7 +141,7 @@ const IndexPage: React.FC = () => {
           file_id: fileId.current, 
           onset_beats: onsetBeats.current, 
           input_type: inputType.toLowerCase(), 
-          device: selectedDevice 
+          device: inputType === 'Audio' ? selectedAudioDevice : selectedMidiDevice,
         }));
       };
       ws.current.onmessage = (event) => {
@@ -237,19 +241,31 @@ const IndexPage: React.FC = () => {
     return 0;
   };
 
-    const fetchAudioDevices = async () => {
+  const fetchAudioDevices = async () => {
     try {
       const response = await fetch(`${backendUrl}/audio-devices`);
       const data = await response.json();
       setAudioDevices(data.devices);
       if (data.devices.length > 0) {
-        setSelectedDevice(data.devices[0].name);
+        setSelectedAudioDevice(data.devices[0].name);
       }
     } catch (error) {
       console.error('Error fetching audio devices:', error);
     }
   };
 
+  const fetchMidiDevices = async () => {
+    try {
+      const response = await fetch(`${backendUrl}/midi-devices`);
+      const data = await response.json();
+      setMidiDevices(data.devices);
+      if (data.devices.length > 0) {
+        setSelectedMidiDevice(data.devices[0].name);
+      }
+    } catch (error) {
+      console.error('Error fetching midi devices:', error);
+    }
+  };
   
 
   return (
@@ -267,11 +283,26 @@ const IndexPage: React.FC = () => {
       {inputType === 'Audio' && (
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
             <select
-              value={selectedDevice}
-              onChange={(e) => setSelectedDevice(e.target.value)}
+              value={selectedAudioDevice}
+              onChange={(e) => setSelectedAudioDevice(e.target.value)}
               className="px-4 py-2 rounded-md bg-white border border-gray-300"
             >
               {audioDevices.map((device, index) => (
+                <option key={index} value={device.name}>
+                  {device.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      {inputType === 'MIDI' && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
+            <select
+              value={selectedMidiDevice}
+              onChange={(e) => setSelectedMidiDevice(e.target.value)}
+              className="px-4 py-2 rounded-md bg-white border border-gray-300"
+            >
+              {midiDevices.map((device, index) => (
                 <option key={index} value={device.name}>
                   {device.name}
                 </option>

@@ -14,7 +14,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.websockets import WebSocketState
 
 from .position_manager import position_manager
-from .utils import get_audio_devices, preprocess_score, run_score_following
+from .utils import (
+    get_audio_devices,
+    get_midi_devices,
+    preprocess_score,
+    run_score_following,
+)
 
 
 @asynccontextmanager
@@ -56,6 +61,12 @@ async def audio_devices():
     return {"devices": devices}
 
 
+@app.get("/midi-devices")
+async def midi_devices():
+    devices = get_midi_devices()
+    return {"devices": devices}
+
+
 @app.post("/upload")
 def upload_file(file: UploadFile = File(...)):
     file_id = str(uuid.uuid4())[:8]
@@ -83,7 +94,9 @@ async def websocket_endpoint(websocket: WebSocket):
 
     # Run score following in a separate thread (as a background task)
     loop = asyncio.get_event_loop()
-    loop.run_in_executor(executor, run_score_following, file_id, input_type, device)
+    task = loop.run_in_executor(
+        executor, run_score_following, file_id, input_type, device
+    )
 
     try:
         while websocket.client_state == WebSocketState.CONNECTED:
@@ -95,7 +108,14 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.send_json({"beat_position": current_position})
             await asyncio.sleep(0.1)
 
+            if task.done():
+                await websocket.send_json({"status": "completed"})
+                break
+
     except Exception as e:
         print(f"Websocket send data error: {e}, {type(e)}")
         position_manager.reset()
         return
+    finally:
+        await websocket.close()
+        position_manager.reset()
