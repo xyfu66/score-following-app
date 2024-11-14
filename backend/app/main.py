@@ -99,13 +99,15 @@ async def websocket_endpoint(websocket: WebSocket):
     )
 
     try:
+        prev_position = 0
         while websocket.client_state == WebSocketState.CONNECTED:
             current_position = position_manager.get_position(file_id)
-            print(
-                f"[{datetime.now().strftime('%H:%M:%S.%f')}] Current position: {current_position}"
-            )
-
-            await websocket.send_json({"beat_position": current_position})
+            if current_position != prev_position:
+                print(
+                    f"[{datetime.now().strftime('%H:%M:%S.%f')}] Current position: {current_position}"
+                )
+                await websocket.send_json({"beat_position": current_position})
+                prev_position = current_position
             await asyncio.sleep(0.1)
 
             if task.done():
@@ -117,5 +119,6 @@ async def websocket_endpoint(websocket: WebSocket):
         position_manager.reset()
         return
     finally:
-        await websocket.close()
+        if websocket.client_state == WebSocketState.CONNECTED:
+            await websocket.close()
         position_manager.reset()

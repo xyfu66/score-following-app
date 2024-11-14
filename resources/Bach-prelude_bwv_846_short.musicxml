@@ -8,7 +8,7 @@
     <rights>Das Wohltemperierte Klavier I</rights>
     <encoding>
       <software>MuseScore 4.4.2</software>
-      <encoding-date>2024-11-12</encoding-date>
+      <encoding-date>2024-11-14</encoding-date>
       <supports element="accidental" type="yes"/>
       <supports element="beam" type="yes"/>
       <supports element="print" attribute="new-page" type="yes" value="yes"/>
@@ -61,13 +61,7 @@
     </defaults>
   <credit page="1">
     <credit-type>title</credit-type>
-    <credit-words default-x="664" default-y="1641.1798" justify="center" valign="top" font-family="Times New Roman" font-size="24">Das Wohltemperierte Klavier I</credit-words>
-    </credit>
-  <credit page="1">
-    <credit-type>subtitle</credit-type>
-    <credit-words default-x="664" default-y="1579.6698" justify="center" valign="top" font-family="Times New Roman" font-size="14">Praeludium und Fuge in C-Dur
-</credit-words>
-    <credit-words>BWV 846</credit-words>
+    <credit-words default-x="664" default-y="1641.1798" justify="center" valign="top" font-family="Times New Roman" font-size="24">Prelude and Fugue in C major, BWV 846</credit-words>
     </credit>
   <credit page="1">
     <credit-type>composer</credit-type>
@@ -1176,7 +1170,7 @@
       <backup>
         <duration>16</duration>
         </backup>
-      <note default-x="60.86" default-y="-125">
+      <note default-x="60.86" default-y="-105">
         <rest>
           <display-step>B</display-step>
           <display-octave>2</display-octave>
@@ -1186,26 +1180,26 @@
         <type>16th</type>
         <staff>2</staff>
         </note>
-      <note default-x="113.28" default-y="-130">
+      <note default-x="113.28" default-y="-95">
         <pitch>
           <step>C</step>
-          <octave>3</octave>
+          <octave>4</octave>
           </pitch>
         <duration>3</duration>
         <tie type="start"/>
         <voice>5</voice>
         <type>eighth</type>
-        <dot default-x="137.83" default-y="-130"/>
+        <dot default-x="137.83" default-y="-90"/>
         <stem>up</stem>
         <staff>2</staff>
         <notations>
           <tied type="start"/>
           </notations>
         </note>
-      <note default-x="251.34" default-y="-130">
+      <note default-x="251.34" default-y="-95">
         <pitch>
           <step>C</step>
-          <octave>3</octave>
+          <octave>4</octave>
           </pitch>
         <duration>4</duration>
         <tie type="stop"/>
@@ -1219,10 +1213,10 @@
           <tied type="start"/>
           </notations>
         </note>
-      <note default-x="461.01" default-y="-130">
+      <note default-x="461.01" default-y="-95">
         <pitch>
           <step>C</step>
-          <octave>3</octave>
+          <octave>4</octave>
           </pitch>
         <duration>8</duration>
         <tie type="stop"/>
@@ -1237,10 +1231,10 @@
       <backup>
         <duration>16</duration>
         </backup>
-      <note default-x="60.86" default-y="-165">
+      <note default-x="60.86" default-y="-130">
         <pitch>
           <step>C</step>
-          <octave>2</octave>
+          <octave>3</octave>
           </pitch>
         <duration>8</duration>
         <tie type="start"/>
@@ -1252,10 +1246,10 @@
           <tied type="start"/>
           </notations>
         </note>
-      <note default-x="461.01" default-y="-165">
+      <note default-x="461.01" default-y="-130">
         <pitch>
           <step>C</step>
-          <octave>2</octave>
+          <octave>3</octave>
           </pitch>
         <duration>8</duration>
         <tie type="stop"/>
@@ -1269,10 +1263,10 @@
         </note>
       </measure>
     <measure number="5" width="289.83">
-      <note default-x="12.5" default-y="-130">
+      <note default-x="12.5" default-y="-95">
         <pitch>
           <step>C</step>
-          <octave>3</octave>
+          <octave>4</octave>
           </pitch>
         <duration>16</duration>
         <voice>1</voice>
@@ -1323,18 +1317,15 @@
       <backup>
         <duration>16</duration>
         </backup>
-      <note default-x="12.5" default-y="-165">
+      <note default-x="12.5" default-y="-130">
         <pitch>
           <step>C</step>
-          <octave>2</octave>
+          <octave>3</octave>
           </pitch>
         <duration>16</duration>
         <voice>5</voice>
         <type>whole</type>
         <staff>2</staff>
-        <notations>
-          <fermata type="upright" relative-y="5"/>
-          </notations>
         </note>
       <barline location="right">
         <bar-style>light-heavy</bar-style>
