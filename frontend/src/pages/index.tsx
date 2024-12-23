@@ -129,6 +129,7 @@ const IndexPage: React.FC = () => {
   };
 
   const playMusic = async () => {
+    cursor.current.reset();
     console.log('Playing music');
     if (cursor.current && fileId.current) {
       resetStatus();

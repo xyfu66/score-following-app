@@ -1,31 +1,30 @@
 # score-following-app
 
-This is a simple score following app that reads a score file (MusicXML) and displays the aligned position in real-time using an Audio/MIDI input device. For the core alignment algorithm, we use the a `matchmaker`, python library for real-time music alignment. (ISMIR 2024 Late Breaking Demo)
+This is a simple score following app that reads a score file (MusicXML) and displays the aligned position in real-time using an Audio/MIDI input device. For the core alignment algorithm, we use the a [pymatchmaker](https://github.com/pymatchmaker/matchmaker), python library for real-time music alignment. (ISMIR 2024 Late Breaking Demo)
 
 ## Pre-requisites
 
-We use `midi2audio` in the preprocessing step to convert MIDI files to WAV files. This requires a soundfont file to be installed. You can download the soundfont file from the following link and place it in the `soundfonts/sf2` directory as below:
+- Available Python version: 3.9 (other versions will be supported soon!)
+- [Fluidsynth](https://www.fluidsynth.org/)
+- [PortAudio](https://www.portaudio.com/)
 
 ```bash
-mkdir -p ~/soundfonts/sf2
-wget ftp://ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General/MuseScore_General.sf2 ~/soundfonts/sf2/
-```
+# Linux
+$ sudo apt-get install fluidsynth && sudo apt-get install portaudio19-dev
 
-Install fluidsynth as a dependency for the `midi2audio` package.
-
-```bash
-$ sudo apt-get install fluidsynth  # (for Linux)
-$ brew install fluidsynth  # (for MacOS)
+# MacOS
+$ brew install fluidsynth && brew install portaudio
 ```
 
 ## Setting Backend environment
 
-Tested on Python 3.12 (conda)
+Tested on Python 3.9 (conda)
 
 ```bash
 $ cd backend/
-$ conda env create -f environment.yml
+$ conda create -n sfa python=3.9
 $ conda activate sfa
+$ pip install -r requirements.txt
 ```
 
 ## Setting Frontend environment
