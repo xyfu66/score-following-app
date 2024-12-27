@@ -50,3 +50,7 @@ $ npm start  # Client will start at http://localhost:50003/
 ```
 
 Now you can access the app at `http://localhost:50003/` in your browser.
+
+## Demo video
+
+https://raw.githubusercontent.com/laurenceyoon/score-following-app/main/resources/demo.mp4
