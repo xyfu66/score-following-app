@@ -53,4 +53,4 @@ Now you can access the app at `http://localhost:50003/` in your browser.
 
 ## Demo video
 
-https://raw.githubusercontent.com/laurenceyoon/score-following-app/main/resources/demo.mp4
+[![Demo video](https://raw.githubusercontent.com/laurenceyoon/score-following-app/develop/demo/thumbnail.png)](https://raw.githubusercontent.com/laurenceyoon/score-following-app/develop/demo/video.mp4)
