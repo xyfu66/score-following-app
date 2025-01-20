@@ -53,4 +53,4 @@ Now you can access the app at `http://localhost:50003/` in your browser.
 
 ## Demo video
 
-https://github.com/user-attachments/assets/340f5a5a-9c6e-4695-a4c8-fa0212519a4e
+https://github.com/user-attachments/assets/a8010f8b-45a1-4be5-8cd1-f65a9601f8eb
