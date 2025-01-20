@@ -167,7 +167,7 @@ const IndexPage: React.FC = () => {
 
     ws.current.onopen = () => {
       console.log('WebSocket connection opened');
-      const input_type = performanceFile ? 'audio' : inputType.toLowerCase();
+      const input_type = performanceFile?.type.includes('midi') ? 'midi' : 'audio';
       
       ws.current?.send(JSON.stringify({ 
         file_id: fileId.current,
