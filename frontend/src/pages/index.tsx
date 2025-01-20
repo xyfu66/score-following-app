@@ -270,55 +270,99 @@ const IndexPage: React.FC = () => {
   
 
   return (
-    <div>
+    <div className="min-h-screen bg-gray-50">
       <Head>
         <title>Score Following App</title>
       </Head>
       {/* <CustomAudioPlayer audioPath="audio.wav" startScrolling={playMusic}/> */}
       {isFileUploaded && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
-          <button onClick={() => setInputType('Audio')} disabled={inputType === 'Audio'} style={{ padding: '10px 20px', fontSize: '16px', marginLeft: '10px' }}>Audio</button>
-          <button onClick={() => setInputType('MIDI')} disabled={inputType === 'MIDI'} style={{ padding: '10px 20px', fontSize: '16px', marginLeft: '10px' }}>MIDI</button>
-        </div>
-      )}
-      {inputType === 'Audio' && (
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
-            <select
-              value={selectedAudioDevice}
-              onChange={(e) => setSelectedAudioDevice(e.target.value)}
-              className="px-4 py-2 rounded-md bg-white border border-gray-300"
+        <div className="flex flex-col items-center space-y-4 py-6 bg-white shadow-sm">
+          {/* Input Type Selection */}
+          <div className="flex space-x-4">
+            <button
+              onClick={() => setInputType('Audio')}
+              className={`px-6 py-2 rounded-full font-medium transition-all duration-200
+                ${inputType === 'Audio'
+                  ? 'bg-blue-500 text-white shadow-md scale-105'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
             >
-              {audioDevices.map((device, index) => (
-                <option key={index} value={device.name}>
-                  {device.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-      {inputType === 'MIDI' && (
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
-            <select
-              value={selectedMidiDevice}
-              onChange={(e) => setSelectedMidiDevice(e.target.value)}
-              className="px-4 py-2 rounded-md bg-white border border-gray-300"
+              🎤 Audio
+            </button>
+            <button
+              onClick={() => setInputType('MIDI')}
+              className={`px-6 py-2 rounded-full font-medium transition-all duration-200
+                ${inputType === 'MIDI'
+                  ? 'bg-blue-500 text-white shadow-md scale-105'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
             >
-              {midiDevices.map((device, index) => (
-                <option key={index} value={device.name}>
-                  {device.name}
-                </option>
-              ))}
-            </select>
+              🎹 MIDI
+            </button>
           </div>
-        )}
-      {isFileUploaded && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
-          <button onClick={playMusic} disabled={isPlaying} style={{ padding: '10px 20px', fontSize: '16px' }}>Play</button>
-          <button onClick={stopMusic} disabled={!isPlaying} style={{ padding: '10px 20px', fontSize: '16px', marginLeft: '10px' }}>Stop</button>
+
+          {/* Device Selection */}
+          {inputType === 'Audio' && (
+            <div className="w-64">
+              <select
+                value={selectedAudioDevice}
+                onChange={(e) => setSelectedAudioDevice(e.target.value)}
+                className="w-full px-4 py-2 rounded-md bg-white border border-gray-200 
+                  shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500
+                  transition-all duration-200"
+              >
+                {audioDevices.map((device, index) => (
+                  <option key={index} value={device.name}>
+                    {device.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {inputType === 'MIDI' && (
+            <div className="w-64">
+              <select
+                value={selectedMidiDevice}
+                onChange={(e) => setSelectedMidiDevice(e.target.value)}
+                className="w-full px-4 py-2 rounded-md bg-white border border-gray-200 
+                  shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500
+                  transition-all duration-200"
+              >
+                {midiDevices.map((device, index) => (
+                  <option key={index} value={device.name}>
+                    {device.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Playback Controls */}
+          <div className="flex space-x-4">
+            <button
+              onClick={playMusic}
+              disabled={isPlaying}
+              className={`flex items-center px-6 py-2 rounded-full font-medium transition-all duration-200
+                ${!isPlaying
+                  ? 'bg-green-500 text-white hover:bg-green-600 shadow-md'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+            >
+              <span className="mr-2">▶️</span> Play
+            </button>
+            <button
+              onClick={stopMusic}
+              disabled={!isPlaying}
+              className={`flex items-center px-6 py-2 rounded-full font-medium transition-all duration-200
+                ${isPlaying
+                  ? 'bg-red-500 text-white hover:bg-red-600 shadow-md'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+            >
+              <span className="mr-2">⏹️</span> Stop
+            </button>
+          </div>
         </div>
       )}
       {!isFileUploaded && <FileUpload backendUrl={backendUrl} onFileUpload={onFileUpload} />}
-      <div ref={vfRef}></div>
+      <div ref={vfRef} id="osmdContainer" className="mt-4"></div>
     </div>
   );
 };
