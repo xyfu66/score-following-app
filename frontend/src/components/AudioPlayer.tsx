@@ -1,24 +1,66 @@
-import React from 'react';
+import React, { forwardRef, useImperativeHandle } from 'react';
 import AudioPlayer from 'react-h5-audio-player';
 import 'react-h5-audio-player/lib/styles.css';
 
-interface CustomAudioPlayerProps {
-  audioPath: string;
-  startScrolling: () => void;
+export interface AudioPlayerRef {
+  play: () => void;
+  pause: () => void;
 }
 
-const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({ audioPath, startScrolling }) => {
+interface CustomAudioPlayerProps {
+  audioFile: File;
+  isPlaying: boolean;
+  onPlay: () => void;
+  onPause: () => void;
+  onEnded: () => void;
+}
+
+const CustomAudioPlayer = forwardRef<AudioPlayerRef, CustomAudioPlayerProps>(({ 
+  audioFile, 
+  isPlaying,
+  onPlay,
+  onPause,
+  onEnded 
+}, ref) => {
+  const playerRef = React.useRef<any>(null);
+
+  useImperativeHandle(ref, () => ({
+    play: () => {
+      playerRef.current?.audio.current.play();
+    },
+    pause: () => {
+      playerRef.current?.audio.current.pause();
+    }
+  }));
+
+  const audioUrl = React.useMemo(() => {
+    return URL.createObjectURL(audioFile);
+  }, [audioFile]);
+
+  // cleanup
+  React.useEffect(() => {
+    return () => {
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
+    };
+  }, [audioUrl]);
+
   return (
     <div>
       <AudioPlayer
-        src={audioPath}
+        ref={playerRef}
+        src={audioUrl}
         showSkipControls={false}
         showJumpControls={false}
         showDownloadProgress={false}
-        onPlay={startScrolling}
+        autoPlay={isPlaying}
+        onPlay={onPlay}
+        onPause={onPause}
+        onEnded={onEnded}
       />
     </div>
   );
-};
+});
 
 export default CustomAudioPlayer;

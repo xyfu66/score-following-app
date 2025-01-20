@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Head from 'next/head';
 import FileUpload from '../components/FileUpload';
-import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 import CustomAudioPlayer from '../components/AudioPlayer';
+import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
+import { AudioPlayerRef } from '../components/AudioPlayer';
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -32,6 +33,8 @@ const IndexPage: React.FC = () => {
   const uniqueNotesWRest = useRef<any[]>([]);
   const timeIndexMap = useRef<{ [key: number]: number }>({}); // timeIndexMap: { time: index }
   const [isSimulationMode, setIsSimulationMode] = useState(false);
+  const [performanceFile, setPerformanceFile] = useState<File | null>(null);
+  const audioPlayerRef = useRef<AudioPlayerRef>(null);
 
   useEffect(() => {
     if (inputType === 'Audio') {
@@ -92,7 +95,6 @@ const IndexPage: React.FC = () => {
         iterator.moveToNext();
       }
 
-      // 원본 코드의 방식대로 timeIndexMap 생성
       const uniqueNotesWRestArray: { note: number; time: number; length: number }[] = [];
       const timeIndexMapObj: { [key: number]: number } = {};
       allNotesWRest.forEach((note, index) => {
@@ -108,28 +110,33 @@ const IndexPage: React.FC = () => {
     }
   };
 
-  const onFileUpload = async (data: FileUploadData) => {
+  const onFileUpload = async (data: { 
+    file_id: string; 
+    file_content: string;
+    hasPerformanceFile: boolean;
+    performanceFile?: File;
+  }) => {
+    fileId.current = data.file_id;
+    if (data.performanceFile && data.performanceFile instanceof File) {
+      console.log('Performance file received:', data.performanceFile);
+      setPerformanceFile(data.performanceFile);
+    }
     try {
       console.log('Performance file exists:', data.hasPerformanceFile);
       setIsSimulationMode(data.hasPerformanceFile);
       
       onsetBeats.current = data.onset_beats;
-      fileId.current = data.file_id;
 
       if (vfRef.current) {
-        // 1. OSMD 초기화
         osmd.current = new OpenSheetMusicDisplay(vfRef.current);
         await osmd.current.load(data.file_content);
         await osmd.current.render();
 
-        // 2. Cursor 초기화 - 이 부분이 중요
         cursor.current = osmd.current.cursor;
         console.log('Cursor initialized:', cursor.current); // 디버깅용
 
-        // 3. 노트 등록
         registerNoteFromOsmd(osmd.current);
 
-        // 4. 커서 초기 위치 설정
         if (cursor.current) {
           cursor.current.reset();
           cursor.current.show();
@@ -146,20 +153,25 @@ const IndexPage: React.FC = () => {
   const playMusic = async () => {
     if (!cursor.current || !fileId.current) return;
     
+    setIsPlaying(true);
+    if (performanceFile) {
+      audioPlayerRef.current?.play();
+    }
+
     console.log('Starting music playback...');
     cursor.current.reset();
-    setIsPlaying(true);
 
     const wsUrl = `${backendUrl.replace(/^http/, 'ws')}/ws`;
     ws.current = new WebSocket(wsUrl);
 
     ws.current.onopen = () => {
       console.log('WebSocket connection opened');
+      const input_type = performanceFile ? 'audio' : inputType.toLowerCase();
+      
       ws.current?.send(JSON.stringify({ 
-        file_id: fileId.current, 
-        onset_beats: onsetBeats.current,
-        input_type: isSimulationMode ? 'simulation' : inputType.toLowerCase(),
-        device: isSimulationMode ? '' : (inputType === 'Audio' ? selectedAudioDevice : selectedMidiDevice),
+        file_id: fileId.current,
+        input_type: input_type,
+        device: performanceFile ? '' : (inputType === 'Audio' ? selectedAudioDevice : selectedMidiDevice),
       }));
     };
 
@@ -167,12 +179,10 @@ const IndexPage: React.FC = () => {
       const data = JSON.parse(event.data);
       console.log('WebSocket message received:', data);
       
-      // 현재 커서 위치 로깅
       const iterator = cursor.current?.Iterator;
       console.log('Current cursor time:', iterator?.currentTimeStamp.RealValue * 4);
       console.log('Target beat position:', data.beat_position);
 
-      // 커서 이동
       if (data.beat_position !== undefined) {
         moveToTargetBeat(data.beat_position);
       }
@@ -201,7 +211,6 @@ const IndexPage: React.FC = () => {
     logWithTimestamp(`Moving to target beat: ${targetBeat}`);
     if (!osmd.current) return;
     
-    // 커서 재동기화
     cursor.current = osmd.current.cursor;
     
     if (cursor.current) {
@@ -234,7 +243,6 @@ const IndexPage: React.FC = () => {
         }
       }
 
-      // OSMD cursor 업데이트
       osmd.current.cursor.update();
       cursor.current.show();
     }
@@ -302,7 +310,6 @@ const IndexPage: React.FC = () => {
       )}
       {isFileUploaded && (
         <div className="flex flex-col items-center space-y-4 py-6">
-          {/* Audio/MIDI 토글 버튼 - 시뮬레이션 모드가 아닐 때만 표시 */}
           {!isSimulationMode && (
             <div className="flex space-x-4">
               <button
@@ -326,7 +333,6 @@ const IndexPage: React.FC = () => {
             </div>
           )}
 
-          {/* Device Selection - 시뮬레이션 모드가 아닐 때만 표시 */}
           {!isSimulationMode && inputType === 'Audio' && (
             <div className="w-64">
               <select
@@ -363,7 +369,6 @@ const IndexPage: React.FC = () => {
             </div>
           )}
 
-          {/* Play/Stop 버튼은 항상 표시 */}
           <div className="flex space-x-4">
             <button
               onClick={playMusic}
@@ -389,6 +394,26 @@ const IndexPage: React.FC = () => {
         </div>
       )}
       <div ref={vfRef} id="osmdContainer" className="mt-4"></div>
+      {performanceFile && (
+        <CustomAudioPlayer 
+          ref={audioPlayerRef}
+          audioFile={performanceFile}
+          isPlaying={isPlaying}
+          onPlay={() => {
+            if (!isPlaying) {
+              playMusic();
+            }
+          }}
+          onPause={() => {
+            if (isPlaying) {
+              stopMusic();
+            }
+          }}
+          onEnded={() => {
+            stopMusic();
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -7,6 +7,7 @@ interface FileUploadProps {
     onset_beats: number[]; 
     file_content: string;
     hasPerformanceFile: boolean;
+    performanceFile?: File;
   }) => void;
 }
 
@@ -61,14 +62,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ backendUrl, onFileUpload }) => 
   const handleUpload = async () => {
     if (!scoreFile) return;
     
-    setIsUploading(true);
-    setUploadProgress(0);
-
     try {
       const formData = new FormData();
       formData.append('file', scoreFile);
       
-      // Performance 파일이 있으면 추가
       if (audioFile) {
         formData.append('performance_file', audioFile);
       }
@@ -79,32 +76,25 @@ const FileUpload: React.FC<FileUploadProps> = ({ backendUrl, onFileUpload }) => 
       });
 
       if (!response.ok) throw new Error('Upload failed');
-
-      setUploadProgress(50); // 파일 업로드 완료
-
       const data = await response.json();
       
-      // MusicXML 파일 읽기
       const fileContent = await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onload = (e) => resolve(e.target?.result as string);
         reader.readAsText(scoreFile);
       });
 
-      setUploadProgress(100); // 전체 프로세스 완료
-      
       onFileUpload({
         file_id: data.file_id,
-        onset_beats: data.onset_beats,
         file_content: fileContent,
-        hasPerformanceFile: !!audioFile
+        hasPerformanceFile: !!audioFile,
+        performanceFile: audioFile || undefined
       });
+
+      console.log('Uploading with audio file object:', audioFile);
     } catch (error) {
       console.error('Upload error:', error);
       alert('Upload failed. Please try again.');
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
     }
   };
 
