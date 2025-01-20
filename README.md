@@ -44,6 +44,8 @@ $ cd backend/
 $ ./start_app.sh  # Server will start at http://localhost:8000/
 ```
 
+Note: The first server startup might take longer as it downloads required soundfonts from `partitura` library.
+
 ```bash
 $ cd frontend/
 $ npm start  # Client will start at http://localhost:50003/
