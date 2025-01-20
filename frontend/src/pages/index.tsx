@@ -35,6 +35,7 @@ const IndexPage: React.FC = () => {
   const [isSimulationMode, setIsSimulationMode] = useState(false);
   const [performanceFile, setPerformanceFile] = useState<File | null>(null);
   const audioPlayerRef = useRef<AudioPlayerRef>(null);
+  const scoreContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (inputType === 'Audio') {
@@ -179,10 +180,6 @@ const IndexPage: React.FC = () => {
       const data = JSON.parse(event.data);
       console.log('WebSocket message received:', data);
       
-      const iterator = cursor.current?.Iterator;
-      console.log('Current cursor time:', iterator?.currentTimeStamp.RealValue * 4);
-      console.log('Target beat position:', data.beat_position);
-
       if (data.beat_position !== undefined) {
         moveToTargetBeat(data.beat_position);
       }
@@ -300,119 +297,122 @@ const IndexPage: React.FC = () => {
       <Head>
         <title>Score Following App</title>
       </Head>
-      {!isFileUploaded && (
-        <div className="max-w-2xl mx-auto pt-16 px-8">
-          <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">
-            Score Following App
-          </h1>
-          <FileUpload backendUrl={backendUrl} onFileUpload={onFileUpload} />
-        </div>
-      )}
-      {isFileUploaded && (
-        <div className="flex flex-col items-center space-y-4 py-6">
-          {!isSimulationMode && (
+
+      <div 
+        ref={scoreContainerRef}
+        className="flex-1 overflow-y-auto pb-32"
+      >
+        {!isFileUploaded && (
+          <div className="max-w-2xl mx-auto pt-16 px-8">
+            <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">
+              Score Following App
+            </h1>
+            <FileUpload backendUrl={backendUrl} onFileUpload={onFileUpload} />
+          </div>
+        )}
+        {isFileUploaded && (
+          <div className="flex flex-col items-center space-y-4 py-6">
+            {!isSimulationMode && (
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => setInputType('Audio')}
+                  className={`px-6 py-2 rounded-full font-medium transition-all duration-200
+                    ${inputType === 'Audio'
+                      ? 'bg-blue-500 text-white shadow-md scale-105'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                >
+                  🎤 Audio
+                </button>
+                <button
+                  onClick={() => setInputType('MIDI')}
+                  className={`px-6 py-2 rounded-full font-medium transition-all duration-200
+                    ${inputType === 'MIDI'
+                      ? 'bg-blue-500 text-white shadow-md scale-105'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                >
+                  🎹 MIDI
+                </button>
+              </div>
+            )}
+
+            {!isSimulationMode && inputType === 'Audio' && (
+              <div className="w-64">
+                <select
+                  value={selectedAudioDevice}
+                  onChange={(e) => setSelectedAudioDevice(e.target.value)}
+                  className="w-full px-4 py-2 rounded-md bg-white border border-gray-200 
+                    shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500
+                    transition-all duration-200"
+                >
+                  {audioDevices.map((device, index) => (
+                    <option key={index} value={device.name}>
+                      {device.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {!isSimulationMode && inputType === 'MIDI' && (
+              <div className="w-64">
+                <select
+                  value={selectedMidiDevice}
+                  onChange={(e) => setSelectedMidiDevice(e.target.value)}
+                  className="w-full px-4 py-2 rounded-md bg-white border border-gray-200 
+                    shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500
+                    transition-all duration-200"
+                >
+                  {midiDevices.map((device, index) => (
+                    <option key={index} value={device.name}>
+                      {device.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="flex space-x-4">
               <button
-                onClick={() => setInputType('Audio')}
-                className={`px-6 py-2 rounded-full font-medium transition-all duration-200
-                  ${inputType === 'Audio'
-                    ? 'bg-blue-500 text-white shadow-md scale-105'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                onClick={playMusic}
+                disabled={isPlaying}
+                className={`flex items-center px-6 py-2 rounded-full font-medium transition-all duration-200
+                  ${!isPlaying
+                    ? 'bg-green-500 text-white hover:bg-green-600 shadow-md'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
               >
-                🎤 Audio
+                <span className="mr-2">▶️</span> Play
               </button>
               <button
-                onClick={() => setInputType('MIDI')}
-                className={`px-6 py-2 rounded-full font-medium transition-all duration-200
-                  ${inputType === 'MIDI'
-                    ? 'bg-blue-500 text-white shadow-md scale-105'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                onClick={stopMusic}
+                disabled={!isPlaying}
+                className={`flex items-center px-6 py-2 rounded-full font-medium transition-all duration-200
+                  ${isPlaying
+                    ? 'bg-red-500 text-white hover:bg-red-600 shadow-md'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
               >
-                🎹 MIDI
+                <span className="mr-2">⏹️</span> Stop
               </button>
             </div>
-          )}
-
-          {!isSimulationMode && inputType === 'Audio' && (
-            <div className="w-64">
-              <select
-                value={selectedAudioDevice}
-                onChange={(e) => setSelectedAudioDevice(e.target.value)}
-                className="w-full px-4 py-2 rounded-md bg-white border border-gray-200 
-                  shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500
-                  transition-all duration-200"
-              >
-                {audioDevices.map((device, index) => (
-                  <option key={index} value={device.name}>
-                    {device.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {!isSimulationMode && inputType === 'MIDI' && (
-            <div className="w-64">
-              <select
-                value={selectedMidiDevice}
-                onChange={(e) => setSelectedMidiDevice(e.target.value)}
-                className="w-full px-4 py-2 rounded-md bg-white border border-gray-200 
-                  shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500
-                  transition-all duration-200"
-              >
-                {midiDevices.map((device, index) => (
-                  <option key={index} value={device.name}>
-                    {device.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div className="flex space-x-4">
-            <button
-              onClick={playMusic}
-              disabled={isPlaying}
-              className={`flex items-center px-6 py-2 rounded-full font-medium transition-all duration-200
-                ${!isPlaying
-                  ? 'bg-green-500 text-white hover:bg-green-600 shadow-md'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
-            >
-              <span className="mr-2">▶️</span> Play
-            </button>
-            <button
-              onClick={stopMusic}
-              disabled={!isPlaying}
-              className={`flex items-center px-6 py-2 rounded-full font-medium transition-all duration-200
-                ${isPlaying
-                  ? 'bg-red-500 text-white hover:bg-red-600 shadow-md'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
-            >
-              <span className="mr-2">⏹️</span> Stop
-            </button>
           </div>
-        </div>
-      )}
-      <div ref={vfRef} id="osmdContainer" className="mt-4"></div>
+        )}
+        <div ref={vfRef} id="osmdContainer"></div>
+      </div>
+
       {performanceFile && (
-        <CustomAudioPlayer 
-          ref={audioPlayerRef}
-          audioFile={performanceFile}
-          isPlaying={isPlaying}
-          onPlay={() => {
-            if (!isPlaying) {
-              playMusic();
-            }
-          }}
-          onPause={() => {
-            if (isPlaying) {
-              stopMusic();
-            }
-          }}
-          onEnded={() => {
-            stopMusic();
-          }}
-        />
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg">
+          <CustomAudioPlayer 
+            ref={audioPlayerRef}
+            audioFile={performanceFile}
+            isPlaying={isPlaying}
+            onPlay={() => {
+              if (!isPlaying) playMusic();
+            }}
+            onPause={() => {
+              if (isPlaying) stopMusic();
+            }}
+            onEnded={stopMusic}
+          />
+        </div>
       )}
     </div>
   );
