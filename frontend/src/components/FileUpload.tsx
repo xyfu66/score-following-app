@@ -89,7 +89,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ backendUrl, onFileUpload }) => 
           if (file) setScoreFile(file);
         }}
       >
-        <div className="text-lg font-semibold mb-2 text-gray-700">Sheet Score (MusicXML)</div>
+        <div className="text-lg font-semibold mb-2 text-gray-700">Sheet Music Score (MusicXML)</div>
         <p className="text-sm text-gray-500 mb-4">
           Drag and drop your score file here, or click to select
         </p>
@@ -117,7 +117,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ backendUrl, onFileUpload }) => 
       <div className="p-8 border-2 border-dashed rounded-lg text-center border-gray-300">
         <div className="text-lg font-semibold mb-2 text-gray-700">Performance File (Optional)</div>
         <p className="text-sm text-gray-500 mb-4">
-          Upload a performance file (audio or midi) for score following simulation
+          Upload a performance file (audio or midi) for simulation mode
         </p>
         <button
           onClick={() => audioInputRef.current?.click()}
