@@ -2,7 +2,12 @@ import React, { useRef, useState } from 'react';
 
 interface FileUploadProps {
   backendUrl: string;
-  onFileUpload: (data: { file_id: string; onset_beats: number[]; file_content: string }) => void;
+  onFileUpload: (data: { 
+    file_id: string; 
+    onset_beats: number[]; 
+    file_content: string;
+    hasPerformanceFile: boolean;
+  }) => void;
 }
 
 const FileUpload: React.FC<FileUploadProps> = ({ backendUrl, onFileUpload }) => {
@@ -37,6 +42,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ backendUrl, onFileUpload }) => 
                 file_id: data.file_id,
                 onset_beats: data.onset_beats,
                 file_content: e.target.result as string,
+                hasPerformanceFile: false,
               });
             }
           };
@@ -61,6 +67,11 @@ const FileUpload: React.FC<FileUploadProps> = ({ backendUrl, onFileUpload }) => 
     try {
       const formData = new FormData();
       formData.append('file', scoreFile);
+      
+      // Performance 파일이 있으면 추가
+      if (audioFile) {
+        formData.append('performance_file', audioFile);
+      }
 
       const response = await fetch(`${backendUrl}/upload`, {
         method: 'POST',
@@ -84,8 +95,9 @@ const FileUpload: React.FC<FileUploadProps> = ({ backendUrl, onFileUpload }) => 
       
       onFileUpload({
         file_id: data.file_id,
-        onset_beats: data.onset_beats || [],
+        onset_beats: data.onset_beats,
         file_content: fileContent,
+        hasPerformanceFile: !!audioFile
       });
     } catch (error) {
       console.error('Upload error:', error);
@@ -97,14 +109,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ backendUrl, onFileUpload }) => 
   };
 
   return (
-    <div className="max-w-2xl mx-auto mt-16 p-8">
-      <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">
-        Score Following App
-      </h1>
-      
+    <div className="space-y-8">
       {/* Score Upload Section */}
       <div 
-        className={`mb-8 p-8 border-2 border-dashed rounded-lg text-center
+        className={`p-8 border-2 border-dashed rounded-lg text-center
           ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}
           hover:border-blue-400 transition-colors duration-200`}
         onDragOver={(e) => {
@@ -119,23 +127,23 @@ const FileUpload: React.FC<FileUploadProps> = ({ backendUrl, onFileUpload }) => 
           if (file) setScoreFile(file);
         }}
       >
-        <div className="mb-4">
-          <div className="text-lg font-semibold mb-2 text-gray-700">Sheet Score (MusicXML)</div>
-          <p className="text-sm text-gray-500 mb-4">Drag and drop your score file here, or click to select</p>
-          <button
-            onClick={() => scoreInputRef.current?.click()}
-            className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 transition-colors"
-          >
-            Select Score File
-          </button>
-          <input
-            ref={scoreInputRef}
-            type="file"
-            accept=".xml,.musicxml"
-            onChange={(e) => e.target.files?.[0] && setScoreFile(e.target.files[0])}
-            className="hidden"
-          />
-        </div>
+        <div className="text-lg font-semibold mb-2 text-gray-700">Sheet Score (MusicXML)</div>
+        <p className="text-sm text-gray-500 mb-4">
+          Drag and drop your score file here, or click to select
+        </p>
+        <button
+          onClick={() => scoreInputRef.current?.click()}
+          className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 transition-colors"
+        >
+          Select Score File
+        </button>
+        <input
+          ref={scoreInputRef}
+          type="file"
+          accept=".xml,.musicxml"
+          onChange={(e) => e.target.files?.[0] && setScoreFile(e.target.files[0])}
+          className="hidden"
+        />
         {scoreFile && (
           <div className="text-sm text-gray-600">
             Selected: {scoreFile.name}
@@ -144,26 +152,24 @@ const FileUpload: React.FC<FileUploadProps> = ({ backendUrl, onFileUpload }) => 
       </div>
 
       {/* Audio Upload Section (Optional) */}
-      <div className="mb-8 p-8 border-2 border-dashed rounded-lg text-center border-gray-200">
-        <div className="mb-4">
-          <div className="text-lg font-semibold mb-2 text-gray-700">
-            Performance Audio (Optional)
-          </div>
-          <p className="text-sm text-gray-500 mb-4">Upload an audio file for performance comparison</p>
-          <button
-            onClick={() => audioInputRef.current?.click()}
-            className="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition-colors"
-          >
-            Select Audio File
-          </button>
-          <input
-            ref={audioInputRef}
-            type="file"
-            accept="audio/*"
-            onChange={(e) => e.target.files?.[0] && setAudioFile(e.target.files[0])}
-            className="hidden"
-          />
-        </div>
+      <div className="p-8 border-2 border-dashed rounded-lg text-center border-gray-300">
+        <div className="text-lg font-semibold mb-2 text-gray-700">Performance File (Optional)</div>
+        <p className="text-sm text-gray-500 mb-4">
+          Upload a performance file (audio or midi) for score following simulation
+        </p>
+        <button
+          onClick={() => audioInputRef.current?.click()}
+          className="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition-colors"
+        >
+          Select Performance File
+        </button>
+        <input
+          ref={audioInputRef}
+          type="file"
+          accept="audio/*"
+          onChange={(e) => e.target.files?.[0] && setAudioFile(e.target.files[0])}
+          className="hidden"
+        />
         {audioFile && (
           <div className="text-sm text-gray-600">
             Selected: {audioFile.name}

@@ -68,13 +68,26 @@ async def midi_devices():
 
 
 @app.post("/upload")
-def upload_file(file: UploadFile = File(...)):
+async def upload_file(
+    file: UploadFile = File(...), performance_file: UploadFile = File(None)
+):
     file_id = str(uuid.uuid4())[:8]
     upload_dir = Path("./uploads")
     upload_dir.mkdir(exist_ok=True)
+
+    # Score file 저장
     file_path = upload_dir / f"{file_id}_{file.filename}"
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
+
+    # Performance file이 있으면 저장
+    if performance_file:
+        performance_path = (
+            upload_dir / f"{file_id}_performance_{performance_file.filename}"
+        )
+        with open(performance_path, "wb") as buffer:
+            shutil.copyfileobj(performance_file.file, buffer)
+        print(f"Performance file saved: {performance_path}")
 
     preprocess_score(file_path)
     return {"file_id": file_id}

@@ -1,6 +1,7 @@
 import logging
 import traceback
 from pathlib import Path
+from typing import Optional
 
 import mido
 import partitura
@@ -42,6 +43,16 @@ def find_score_file_by_id(file_id: str, directory: Path = Path("./uploads")) -> 
                 return file
             elif file.suffix in [".mid", ".midi"]:
                 return file
+    return None
+
+
+def find_performance_file_by_id(
+    file_id: str, directory: Path = Path("./uploads")
+) -> Optional[Path]:
+    """Find performance file with the given file_id"""
+    for file in directory.iterdir():
+        if file.is_file() and file.stem.startswith(f"{file_id}_performance"):
+            return file
     return None
 
 
@@ -102,15 +113,33 @@ def run_score_following(file_id: str, input_type: str, device: str) -> None:
     score_part = partitura.load_score_as_part(score_midi)
     print(f"Running score following with {score_midi}")
 
+    # performance 파일 찾기
+    performance_file = find_performance_file_by_id(file_id)
+
+    # input_type 결정
+    actual_input_type = (
+        "audio"
+        if performance_file and performance_file.suffix in [".wav", ".mp3"]
+        else (
+            "midi"
+            if performance_file and performance_file.suffix == ".mid"
+            else input_type
+        )  # performance 파일이 없을 경우 인자로 받은 input_type 사용
+    )
+
+    print(f"Using input type: {actual_input_type}")
+
     alignment_in_progress = True
     mm = Matchmaker(
         score_file=score_midi,
-        input_type=input_type,
-        device_name_or_index=device,
+        performance_file=performance_file if performance_file else None,
+        input_type=actual_input_type,
+        device_name_or_index=device if not performance_file else None,
     )
+
     try:
         while alignment_in_progress:
-            print("Running score following...")
+            print(f"Running score following... (input type: {actual_input_type})")
             for current_position in mm.run():
                 quarter_position = convert_beat_to_quarter(score_part, current_position)
                 position_manager.set_position(file_id, quarter_position)
