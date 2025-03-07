@@ -27,6 +27,12 @@ $ conda activate sfa
 $ pip install -r requirements.txt
 ```
 
+### With docker *recommend
+
+```
+$ docker build -t score-following-backend -f backend/Dockerfile .
+```
+
 ## Setting Frontend environment
 
 ```bash
@@ -35,6 +41,12 @@ $ npm install
 
 # Create .env.local
 $ echo "NEXT_PUBLIC_BACKEND_URL=http://127.0.0.1:8000" > .env.local
+```
+
+### With docker *recommend
+
+```
+$ docker build -t score-following-frontend -f frontend/Dockerfile .
 ```
 
 ## Running the app
@@ -49,6 +61,13 @@ Note: The first server startup might take longer as it downloads required soundf
 ```bash
 $ cd frontend/
 $ npm start  # Client will start at http://localhost:50003/
+```
+
+### With docker *recommend
+
+```
+$ docker run -d -p 8000:8000 --name SF-BE-Container score-following-backend
+$ docker run -d -p 50003:50003 --name SF-FE-Container score-following-frontend
 ```
 
 Now you can access the app at `http://localhost:50003/` in your browser.
